@@ -1,6 +1,47 @@
+<p align="center">
+  <img src="assets/banner.png" width="100%" alt="Global Economic Intelligence Agent Banner"/>
+</p>
+
+<h1 align="center">🌍 Global Economic Intelligence Agent</h1>
+
+<p align="center">
+  <strong>AI-powered macroeconomic intelligence using LLMs, real-time APIs, and PDF-based Retrieval-Augmented Generation (RAG)</strong>
+</p>
+
+<p align="center">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white">
+  <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-Frontend-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white">
+  <img alt="OpenAI" src="https://img.shields.io/badge/OpenAI-LLM%20Powered-412991?style=for-the-badge&logo=openai&logoColor=white">
+  <img alt="LangChain" src="https://img.shields.io/badge/LangChain-RAG%20Engine-1C1E24?style=for-the-badge">
+  <img alt="ChromaDB" src="https://img.shields.io/badge/ChromaDB-Vector%20Store-4ECDC4?style=for-the-badge">
+  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-Interactive%20Charts-3F4F75?style=for-the-badge&logo=plotly&logoColor=white">
+</p>
+
+<br>
+
+<p align="center">
+  <em>An advanced, full-stack AI system that blends macroeconomic data, interactive dashboards, and retrieval-augmented reasoning into a single intelligence platform.</em>
+</p>
+
+<br>
 
 # Global Economic Intelligence Agent  
 **AI-powered macroeconomic insights using real-time data, PDF-based RAG, and LLM analysis**
+
+---
+
+## Screenshots
+
+### Main Dashboard  
+![Main Dashboard](screenshots/main.png)
+
+### AI Economic Report Generator  
+![Generate Report](screenshots/generate.png)
+
+### Global Economic Heatmap  
+![Heatmap](screenshots/heatmap.png)
+
 
 ---
 
