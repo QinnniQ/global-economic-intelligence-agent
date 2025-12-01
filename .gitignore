@@ -1,0 +1,28 @@
+.env
+# Python
+__pycache__/
+*.pyc
+
+# Streamlit cache
+.streamlit/
+
+# Virtual environments
+.venv/
+venv/
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+
+# Data (optional - unless you want to version it)
+data/ingested/
+data/pdfs/
+
+# Transient files
+*.zip
+
+# OS
+Thumbs.db
+.DS_Store
