@@ -31,6 +31,20 @@
 
 ---
 
+## Screenshots
+
+### Main Dashboard  
+![Main Dashboard](screenshots/main.png)
+
+### AI Economic Report Generator  
+![Generate Report](screenshots/generate.png)
+
+### Global Economic Heatmap  
+![Heatmap](screenshots/heatmap.png)
+
+
+---
+
 ## Overview  
 The **Global Economic Intelligence Agent** is a production-ready AI application that delivers analyst-grade economic insights by combining:
 
