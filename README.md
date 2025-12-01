@@ -2,8 +2,6 @@
 # Global Economic Intelligence Agent  
 **AI-powered macroeconomic insights using real-time data, PDF-based RAG, and LLM analysis**
 
-![Hero Screenshot](screenshots/hero.png)
-
 ---
 
 ## Overview  
