@@ -2,8 +2,6 @@
 # Global Economic Intelligence Agent  
 **AI-powered macroeconomic insights using real-time data, PDF-based RAG, and LLM analysis**
 
-![Hero Screenshot](screenshots/hero.png)
-
 ---
 
 ## Overview  
@@ -26,14 +24,12 @@ This project demonstrates full-stack AI engineering with a polished UX and expla
 - Country-smart UI with flag recognition  
 - Neon Plotly charts + sparkline mini-trends  
 - Responsive, cyberpunk-inspired theme  
-![Dashboard Screenshot](screenshots/dashboard.png)
 
 ---
 
 ### 🟣 2. Global Economic Heatmap  
 - Quick comparison across major economies  
 - Dark neon map with hover interactions  
-![Heatmap Screenshot](screenshots/heatmap.png)
 
 ---
 
@@ -41,20 +37,17 @@ This project demonstrates full-stack AI engineering with a polished UX and expla
 - Structured LLM answers (country detected, indicators used)  
 - RAG-enhanced insights grounded in real reports  
 - Optional Text-to-Speech (TTS) playback  
-![Analysis Screenshot](screenshots/analysis.png)
 
 ---
 
 ### 🟠 4. PDF RAG Engine  
 - Ingests and vectorizes PDF economic reports  
 - Returns relevant excerpts to support analysis  
-![RAG Screenshot](screenshots/rag.png)
 
 ---
 
 ### 🟡 5. Exportable Intelligence  
 - One-click **PDF economic briefing**  
-![Report Screenshot](screenshots/report.png)
 
 ---
 
