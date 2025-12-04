@@ -167,4 +167,3 @@ Ideal for roles in:
 If you’re hiring or want to collaborate:
 
 **LinkedIn:** https://www.linkedin.com/in/nicholai-gay-201905148/ 
-**GitHub:** https://github.com/QinnniQ
