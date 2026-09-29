@@ -2,6 +2,8 @@
 
 import io
 import os
+from pathlib import Path
+
 import requests
 import streamlit as st
 import pandas as pd
@@ -10,6 +12,8 @@ import plotly.express as px
 import pycountry
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+LOGO_PATH = PROJECT_ROOT / "assets" / "logo.png"
 
 # Optional TTS
 try:
@@ -97,18 +101,6 @@ st.markdown(
         font-size: 1.1rem;
     }
 
-    /* Glow + Floating Logo Animation */
-    .logo {
-        filter: drop-shadow(0 0 14px #00E5FF);
-        animation: float 3s ease-in-out infinite;
-    }
-
-    @keyframes float {
-        0% { transform: translateY(0px); }
-        50% { transform: translateY(-4px); }
-        100% { transform: translateY(0px); }
-    }
-
     </style>
     """,
     unsafe_allow_html=True
@@ -128,20 +120,22 @@ st.sidebar.caption("Global Economic Intelligence Agent v1.0")
 
 
 # ----------------------------------------------------
-#           HERO SECTION WITH FLOATING LOGO
+#                        HERO SECTION
 # ----------------------------------------------------
-st.markdown(
-    """
-    <div style="display:flex; align-items:center; gap:18px; margin-bottom: 6px;">
-        <img src="assets/logo.png" width="75" class="logo">
-        <div>
-            <div class="hero">Global Economic Intelligence Agent</div>
-            <div class="subtitle">AI-driven macroeconomic insights • PDF RAG • Real-time indicators & reports</div>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+logo_col, title_col = st.columns([1, 11])
+
+with logo_col:
+    if LOGO_PATH.exists():
+        st.image(str(LOGO_PATH), width=75)
+
+with title_col:
+    st.markdown(
+        """
+        <div class="hero">Global Economic Intelligence Agent</div>
+        <div class="subtitle">AI-driven macroeconomic insights • PDF RAG • Real-time indicators & reports</div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 st.markdown(
     """
