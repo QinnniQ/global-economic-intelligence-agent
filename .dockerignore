@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.log
+.vscode
+.streamlit
+reports_out
+screenshots
+*.zip
+Thumbs.db
+.DS_Store
