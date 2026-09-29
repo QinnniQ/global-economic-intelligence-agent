@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white">
   <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white">
   <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-Frontend-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white">
@@ -36,8 +37,9 @@ It brings together:
 - **LLM synthesis** that combines retrieved context with current indicator data
 - **Interactive dashboards and global visualizations**
 - **Exportable PDF economic briefings**
+- **Automated verification** with pytest and GitHub Actions
 
-The project is designed as an end-to-end AI system rather than a standalone prompt demo: data retrieval, RAG, backend APIs, LLM analysis, visualization, and report generation are separated into distinct application layers.
+The project is designed as an end-to-end AI system rather than a standalone prompt demo: data retrieval, RAG, backend APIs, LLM analysis, visualization, report generation, packaging, and CI are separated into explicit application and engineering layers.
 
 ---
 
@@ -120,9 +122,12 @@ Docker Compose runs the FastAPI backend and Streamlit frontend as separate servi
 - Custom CSS
 - gTTS for optional audio playback
 
-### Packaging
+### Packaging & Verification
 - Docker
 - Docker Compose
+- pytest
+- pytest-cov
+- GitHub Actions
 - Environment-based configuration
 - Container health check for the backend
 
@@ -132,6 +137,9 @@ Docker Compose runs the FastAPI backend and Streamlit frontend as separate servi
 
 ```text
 .
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── assets/
 ├── chroma_store/
 ├── data/
@@ -148,14 +156,56 @@ Docker Compose runs the FastAPI backend and Streamlit frontend as separate servi
 │   │   └── server.py
 │   └── frontend/
 │       └── streamlit_app.py
+├── tests/
+│   └── test_core.py
 ├── .dockerignore
 ├── .env.example
 ├── .gitignore
 ├── Dockerfile
 ├── docker-compose.yml
+├── pytest.ini
+├── requirements-dev.txt
 ├── requirements.txt
 └── README.md
 ```
+
+---
+
+## Testing & CI
+
+The repository includes an initial automated test suite covering deterministic application logic and a backend smoke test.
+
+Current tests verify:
+
+- the FastAPI `/health` endpoint
+- country detection behavior
+- default country fallback behavior
+- single-indicator detection
+- multi-indicator detection
+- default economic-indicator selection
+
+Run the suite locally with:
+
+```bash
+pip install -r requirements-dev.txt
+pytest -q --cov=src --cov-report=term-missing
+```
+
+The GitHub Actions workflow runs automatically on pushes and pull requests targeting `main`:
+
+```text
+Push / Pull Request
+        ↓
+Install Python dependencies
+        ↓
+Run pytest + coverage report
+        ↓
+Tests pass
+        ↓
+Build Docker image
+```
+
+The current deterministic tests use a non-secret placeholder API key and do not make paid OpenAI API calls. Coverage reporting is included to make untested areas visible; the suite is intentionally being expanded rather than presenting an inflated coverage claim.
 
 ---
 
@@ -213,41 +263,27 @@ docker compose down
 
 ## Running Locally without Docker
 
-### 1. Create and activate a virtual environment
+### 1. Create and activate a Python 3.11 environment
 
-Windows PowerShell:
-
-```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-macOS / Linux:
-
-```bash
-python3.11 -m venv .venv
-source .venv/bin/activate
-```
-
-### 2. Install dependencies
+Use your preferred environment manager, then install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
+### 2. Configure environment variables
 
 Copy `.env.example` to `.env` and add your OpenAI API key.
 
-### 4. Start the FastAPI backend
+### 3. Start the FastAPI backend
 
 ```bash
 uvicorn src.backend.server:app --reload --port 8000
 ```
 
-### 5. Start the Streamlit frontend
+### 4. Start the Streamlit frontend
 
-Open a second terminal, activate the same environment, then run:
+Open a second terminal using the same environment, then run:
 
 ```bash
 streamlit run src/frontend/streamlit_app.py
@@ -264,22 +300,31 @@ By default the frontend expects the backend at `http://localhost:8000`. The addr
 - **Explicit retrieval layer:** ChromaDB provides inspectable document retrieval before LLM synthesis.
 - **Environment-based secrets:** API keys are loaded from `.env` and never committed.
 - **Container-aware configuration:** the frontend backend URL is configurable through `BACKEND_URL`, allowing the same application code to run locally or inside Docker Compose.
-- **Health endpoint:** the backend exposes `/health`, and Docker Compose uses it to gate frontend startup.
+- **Health-aware startup:** the backend exposes `/health`, and Docker Compose uses it to gate frontend startup.
+- **Deterministic CI tests:** initial tests focus on logic and API behavior that can be verified without paid external calls.
+- **Build verification:** GitHub Actions builds the Docker image only after the pytest job succeeds.
 
 ---
 
 ## Current Status
 
-The application can now run either directly in Python or as a two-service Docker Compose stack with a FastAPI backend and Streamlit frontend.
+The application now runs directly in Python or as a two-service Docker Compose stack and includes automated pytest verification plus a GitHub Actions CI pipeline.
 
-The next engineering phase is focused on automated verification and deployment:
+Completed engineering milestones:
 
-- automated tests
-- GitHub Actions CI
+- Docker / Docker Compose packaging
+- backend health check
+- automated pytest suite
+- coverage reporting
+- GitHub Actions on pushes and pull requests
+- CI-gated Docker image build
+
+Next engineering priorities:
+
+- expand mocked backend and RAG test coverage
 - deployment configuration
-- logging and observability
-
-These are intentionally listed as roadmap items rather than presented as completed functionality.
+- structured logging and observability
+- production-facing reliability and security hardening
 
 ---
 
@@ -292,6 +337,9 @@ These are intentionally listed as roadmap items rather than presented as complet
 - Vector retrieval with ChromaDB
 - Interactive Streamlit application development
 - Dockerized multi-service application packaging
+- Automated testing with pytest
+- GitHub Actions continuous integration
+- CI-gated Docker build verification
 - Environment-based service configuration
 - Structured separation between retrieval, reasoning, API, and presentation layers
 - Exportable stakeholder-facing outputs
