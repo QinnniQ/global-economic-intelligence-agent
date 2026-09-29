@@ -1,6 +1,7 @@
 # src/frontend/streamlit_app.py
 
 import io
+import os
 import requests
 import streamlit as st
 import pandas as pd
@@ -8,7 +9,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import pycountry
 
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # Optional TTS
 try:
