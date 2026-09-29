@@ -5,7 +5,7 @@
 <h1 align="center">🌍 Global Economic Intelligence Agent</h1>
 
 <p align="center">
-  <strong>AI-powered macroeconomic intelligence using LLMs, real-time APIs, and PDF-based Retrieval-Augmented Generation (RAG)</strong>
+  <strong>AI-powered macroeconomic intelligence using live data, PDF-based RAG, and LLM analysis</strong>
 </p>
 
 <p align="center">
@@ -18,153 +18,267 @@
   <img alt="Plotly" src="https://img.shields.io/badge/Plotly-Interactive%20Charts-3F4F75?style=for-the-badge&logo=plotly&logoColor=white">
 </p>
 
-<br>
-
 <p align="center">
-  <em>An advanced, full-stack AI system that blends macroeconomic data, interactive dashboards, and retrieval-augmented reasoning into a single intelligence platform.</em>
+  <em>A production-minded full-stack AI application combining real-time macroeconomic indicators, document retrieval, and LLM-based synthesis.</em>
 </p>
 
-<br>
+---
 
-# Global Economic Intelligence Agent  
-**AI-powered macroeconomic insights using real-time data, PDF-based RAG, and LLM analysis**
+## Overview
+
+The **Global Economic Intelligence Agent** combines live macroeconomic data with document retrieval and LLM reasoning to produce grounded economic analysis through an interactive web interface.
+
+It brings together:
+
+- **Live macroeconomic indicators** such as GDP growth, inflation, and unemployment
+- **PDF-based Retrieval-Augmented Generation (RAG)** over economic reports
+- **LLM synthesis** that combines retrieved context with current indicator data
+- **Interactive dashboards and global visualizations**
+- **Exportable PDF economic briefings**
+
+The project is designed as an end-to-end AI system rather than a standalone prompt demo: data retrieval, RAG, backend APIs, LLM analysis, visualization, and report generation are separated into distinct application layers.
+
+---
+
+## Architecture
+
+```text
+User
+  ↓
+Streamlit UI
+  ↓
+FastAPI backend
+  ├── Live macro data → World Bank API
+  ├── PDF retrieval → ChromaDB
+  └── LLM analysis → OpenAI
+  ↓
+Grounded analysis + charts + PDF report
+```
 
 ---
 
 ## Screenshots
 
-### Main Dashboard  
+### Main Dashboard
 ![Main Dashboard](screenshots/main.png)
 
-### AI Economic Report Generator  
+### AI Economic Report Generator
 ![Generate Report](screenshots/generate.png)
 
-### Global Economic Heatmap  
+### Global Economic Heatmap
 ![Heatmap](screenshots/heatmap.png)
 
+---
+
+## Features
+
+### 1. Real-Time Macroeconomic Dashboard
+- Live World Bank indicator data
+- GDP growth, inflation, and unemployment views
+- Country-aware dashboard controls
+- Plotly trend visualizations and sparklines
+
+### 2. Global Economic Heatmap
+- Cross-country indicator comparison
+- Interactive geographic visualization
+
+### 3. Ask the AI Economist
+- Country and indicator detection from user questions
+- LLM-generated macro trend summaries
+- RAG-enhanced analysis grounded in retrieved report excerpts
+- Combined reasoning over live data and document context
+
+### 4. PDF RAG Engine
+- Ingests and vectorizes economic reports
+- Stores embeddings in ChromaDB
+- Retrieves relevant passages to support generated analysis
+
+### 5. Exportable Economic Briefings
+- Generates downloadable PDF reports
+- Includes detected country, indicators, analysis, and retrieved context
 
 ---
 
-## Overview  
-The **Global Economic Intelligence Agent** is a production-ready AI application that delivers analyst-grade economic insights by combining:
+## Tech Stack
 
-✔ **Live macroeconomic data** (GDP, inflation, unemployment)  
-✔ **PDF-based Retrieval-Augmented Generation** (IMF, ECB, OECD reports)  
-✔ **LLM reasoning** for synthesis and forecasting  
-✔ **Interactive visualizations** with neon dark-mode design  
-✔ **One-click PDF report generation** for stakeholders  
+### Backend
+- Python
+- FastAPI
+- OpenAI API
+- LangChain
+- ChromaDB
+- World Bank API
+- ReportLab
 
-This project demonstrates full-stack AI engineering with a polished UX and explainable outputs.
-
----
-
-## Features  
-
-### 🔵 1. Real-Time Macroeconomic Dashboard  
-- Live API calls to World Bank Indicators  
-- Country-smart UI with flag recognition  
-- Neon Plotly charts + sparkline mini-trends  
-- Responsive, cyberpunk-inspired theme  
+### Frontend
+- Streamlit
+- Plotly
+- Pandas
+- Custom CSS
+- gTTS for optional audio playback
 
 ---
 
-### 🟣 2. Global Economic Heatmap  
-- Quick comparison across major economies  
-- Dark neon map with hover interactions  
+## Repository Structure
 
----
-
-### 🟢 3. Ask the AI Economist  
-- Structured LLM answers (country detected, indicators used)  
-- RAG-enhanced insights grounded in real reports  
-- Optional Text-to-Speech (TTS) playback  
-
----
-
-### 🟠 4. PDF RAG Engine  
-- Ingests and vectorizes PDF economic reports  
-- Returns relevant excerpts to support analysis  
-
----
-
-### 🟡 5. Exportable Intelligence  
-- One-click **PDF economic briefing**  
-
----
-
-## Tech Stack  
-
-### **Backend**  
-- FastAPI  
-- LangChain for embeddings & retrieval  
-- ChromaDB vector store  
-- Requests → World Bank API  
-- ReportLab → PDF generation  
-
-### **Frontend**  
-- Streamlit  
-- Plotly (dark neon charts)  
-- Custom CSS (glass + cyberpunk theme)  
-- gTTS (optional voice output)
-
----
-
-## Repository Structure  
-
-```
-src/
-  backend/
-    server.py
-    routes/
-    rags/
-  frontend/
-    streamlit_app.py
-data/
-  pdfs/
-  ingested/
-screenshots/
-README.md
+```text
+.
+├── assets/
+├── chroma_store/
+├── data/
+├── reports_out/
+├── screenshots/
+├── src/
+│   ├── agent/
+│   │   └── economic_agent.py
+│   ├── backend/
+│   │   ├── rags/
+│   │   ├── routes/
+│   │   ├── tools/
+│   │   ├── config.py
+│   │   └── server.py
+│   └── frontend/
+│       └── streamlit_app.py
+├── .env.example
+├── .gitignore
+├── requirements.txt
+└── README.md
 ```
 
 ---
 
-## Running Locally  
+## Running Locally
+
+### 1. Clone the repository
 
 ```bash
-git clone <YOUR_REPO_URL>
-cd economics-agent
-python -m venv .venv
-.\.venv\Scriptsctivate
+git clone https://github.com/QinnniQ/global-economic-intelligence-agent.git
+cd global-economic-intelligence-agent
+```
+
+### 2. Create and activate a virtual environment
+
+Windows PowerShell:
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+macOS / Linux:
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
 pip install -r requirements.txt
+```
 
-# Start backend
+### 4. Configure environment variables
+
+Copy the example file:
+
+Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS / Linux:
+
+```bash
+cp .env.example .env
+```
+
+Then add your OpenAI API key to `.env`:
+
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+MODEL=gpt-4o-mini
+```
+
+The real `.env` file is excluded from Git.
+
+### 5. Start the FastAPI backend
+
+```bash
 uvicorn src.backend.server:app --reload --port 8000
+```
 
-# Start frontend
+Health check:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+FastAPI documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+### 6. Start the Streamlit frontend
+
+Open a second terminal, activate the same environment, then run:
+
+```bash
 streamlit run src/frontend/streamlit_app.py
 ```
 
-## Why This Project Matters  
-This project demonstrates the ability to:
+The frontend expects the backend at:
 
-- Build **end-to-end AI systems** (data → retrieval → LLM → UX)  
-- Integrate **real-time APIs** with economic logic  
-- Create **interactive dashboards** for decision makers  
-- Deliver **explainable insights grounded in source documents**  
-- Package AI into a **professional, deployable application**
-
-Ideal for roles in:
-- AI Engineering  
-- Data Science  
-- NLP / RAG Development  
-- Quant/FinTech  
-- Data Infrastructure  
-- LLM Operations  
+```text
+http://localhost:8000
+```
 
 ---
 
-## Contact  
-If you’re hiring or want to collaborate:
+## Engineering Decisions
 
-**LinkedIn:** https://www.linkedin.com/in/nicholai-gay-201905148/ 
-**e-mail:** nicholai.gay@gmail.com
+- **Separate frontend and backend:** Streamlit handles presentation while FastAPI exposes application capabilities as API routes.
+- **Live data + RAG:** structured macroeconomic indicators and unstructured report excerpts are combined rather than relying on a single context source.
+- **Explicit retrieval layer:** ChromaDB provides inspectable document retrieval before LLM synthesis.
+- **Environment-based secrets:** API keys are loaded from `.env` and never committed.
+- **Health endpoint:** the backend exposes `/health` for basic service verification.
+
+---
+
+## Current Status
+
+The application currently runs locally as a multi-service Python application with a FastAPI backend and Streamlit frontend.
+
+The next engineering phase is focused on making the project easier to test, package, and deploy reproducibly:
+
+- Docker / Docker Compose
+- automated tests
+- GitHub Actions CI
+- deployment configuration
+- logging and observability
+
+These are intentionally listed as roadmap items rather than presented as completed functionality.
+
+---
+
+## What This Project Demonstrates
+
+- End-to-end LLM application engineering
+- Retrieval-Augmented Generation over real documents
+- Integration of live external APIs with LLM workflows
+- FastAPI backend design
+- Vector retrieval with ChromaDB
+- Interactive Streamlit application development
+- Structured separation between retrieval, reasoning, API, and presentation layers
+- Exportable stakeholder-facing outputs
+
+---
+
+## Contact
+
+**Nicholai Gay**  
+AI Engineer — LLM Systems, RAG & AI Agents
+
+[LinkedIn](https://www.linkedin.com/in/nicholai-gay-201905148/) · [GitHub](https://github.com/QinnniQ)
