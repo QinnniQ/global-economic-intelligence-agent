@@ -1,7 +1,14 @@
 .env
+
 # Python
 __pycache__/
 *.pyc
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 
 # Streamlit cache
 .streamlit/
