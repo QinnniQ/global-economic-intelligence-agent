@@ -62,6 +62,12 @@ Docker Compose runs the FastAPI backend and Streamlit frontend as separate servi
 
 ---
 
+## Inspect a decision trace
+
+The [offline analysis trace](docs/offline_trace.md) follows one synthetic question through indicator selection, a report passage, and a stubbed answer, then shows what happens when retrieval returns nothing. It is backed by tests and requires no API key. In a live response, `raw_data`, `rag_passages`, `rag_sources`, and `rag_status` make the evidence path inspectable. Passage IDs are available for citations, while factual accuracy still requires review against the source report.
+
+---
+
 ## Screenshots
 
 ### Main Dashboard
