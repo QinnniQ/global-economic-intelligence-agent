@@ -70,23 +70,24 @@ Summary:
     return response.choices[0].message.content
 
 
+def format_report_context(results: dict):
+    """Keep Chroma passage IDs alongside text so an answer can be checked."""
+    documents = (results.get("documents") or [[]])[0]
+    ids = (results.get("ids") or [[]])[0]
+    passages = []
+    for index, document in enumerate(documents):
+        text = (document or "").strip()
+        if not text:
+            continue
+        passage_id = ids[index] if index < len(ids) and ids[index] else f"passage_{index + 1}"
+        passages.append({"id": passage_id, "text": text})
+    context = "\n\n".join(f"[{p['id']}] {p['text']}" for p in passages)
+    return context, passages
+
+
 def get_rag_context(query: str, n=3):
-    """
-    Retrieve the most relevant economic report passages based on the query.
-    """
-    results = search_reports(query, n=n)
-
-    rag_context = ""
-
-    # Chroma returns: {"ids": [[...]], "documents": [[...]], ...}
-    if "documents" in results and results["documents"]:
-        docs = results["documents"][0]
-        for doc in docs:
-            rag_context += f"- {doc}\n"
-    else:
-        rag_context = "No relevant report excerpts found."
-
-    return rag_context
+    """Retrieve report passages with IDs that can be cited in the response."""
+    return format_report_context(search_reports(query, n=n))
 
 
 def analyze_economy(query: str, country: str = None):
@@ -128,9 +129,16 @@ def analyze_economy(query: str, country: str = None):
         })
 
     # ---- RAG CONTEXT ----
-    rag_context = get_rag_context(query, n=3)
+    rag_context, rag_passages = get_rag_context(query, n=3)
 
     # ---- FINAL SYNTHESIS ----
+    report_instruction = (
+        "Use report excerpts only for claims they actually support. Cite a passage ID in square brackets "
+        "for each report-based claim; do not invent citations."
+        if rag_passages
+        else "No report passages were retrieved. State that report evidence was unavailable; "
+        "base the answer only on the macro data and do not invent report claims."
+    )
     final_prompt = f"""
 User question:
 "{query}"
@@ -142,17 +150,16 @@ Indicators analyzed: {indicator_list}
 {chr(10).join(summaries)}
 
 === EXCERPTS FROM ECONOMIC REPORTS (RAG) ===
-{rag_context}
+{rag_context or 'No report passages were retrieved.'}
 
-Based on BOTH the macroeconomic data AND the report excerpts,
-write a final combined economic analysis (5–8 sentences).
+Write a concise economic analysis (5–8 sentences).
 
 Your answer should:
 - integrate the macro trends,
-- integrate the report context,
+- follow this evidence rule: {report_instruction}
 - explain risks, drivers, and outlook,
 - avoid repeating raw data verbatim,
-- sound like a professional economic analyst.
+- separate evidence from inference.
 """
 
     final_response = client.chat.completions.create(
@@ -167,6 +174,8 @@ Your answer should:
         "indicators_used": indicator_list,
         "analysis": combined_answer,
         "rag_passages": rag_context,
+        "rag_sources": [p["id"] for p in rag_passages],
+        "rag_status": "passages_found" if rag_passages else "no_report_evidence",
         "raw_summaries": summaries,
         "raw_data": collected_data
     }
