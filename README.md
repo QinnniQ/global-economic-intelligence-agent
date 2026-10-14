@@ -4,6 +4,8 @@
 
 <h1 align="center">🌍 Global Economic Intelligence Agent</h1>
 
+<p align="center"><a href="https://profile.nickcloud.dev/">Nicholai Gay's AI engineering portfolio</a> · <a href="https://www.linkedin.com/in/nicholai-gay-201905148/">LinkedIn</a></p>
+
 <p align="center">
   <strong>AI-powered macroeconomic intelligence using live data, PDF-based RAG, and LLM analysis</strong>
 </p>
