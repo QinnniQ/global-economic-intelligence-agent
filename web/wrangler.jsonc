@@ -6,6 +6,10 @@
   "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
   "env": {
     "preview": { "name": "global-economic-intelligence-preview" },
-    "production": { "name": "global-economic-intelligence" }
+    "production": {
+      "name": "global-economic-intelligence",
+      "workers_dev": true,
+      "routes": [{ "pattern": "econ.nickcloud.dev", "custom_domain": true }]
+    }
   }
 }

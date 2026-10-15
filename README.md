@@ -4,9 +4,9 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 [Nicholai Gay's AI engineering portfolio](https://profile.nickcloud.dev/) · [LinkedIn](https://www.linkedin.com/in/nicholai-gay-201905148/) · [CI status](https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml)
 
-![Economic overview in the saved demonstration](docs/overview.png)
+![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 15 October 2026:** the app is deployed on Cloudflare at [global-economic-intelligence.nicholai-gay.workers.dev](https://global-economic-intelligence.nicholai-gay.workers.dev). The saved-data overview, comparison, source-linked analyst and PDF workflow were exercised in a browser. The Cloudflare preview and production Workers both served the app, and live Netherlands observations were retrieved through the deployed API. No custom domain or paid model service is configured.
+**Release status, 15 October 2026:** the app is deployed on Cloudflare at [econ.nickcloud.dev](https://econ.nickcloud.dev). The saved-data overview, comparison, source-linked analyst and PDF workflow were exercised in a browser. The Cloudflare preview and production Workers both served the app, and live Netherlands observations were retrieved through the deployed API. The custom domain homepage and API returned HTTP 200 over valid HTTPS. No paid model service is configured.
 
 ## Visitor experience
 
@@ -76,7 +76,7 @@ Post-deploy smoke checks confirmed the preview homepage, saved-data comparison a
 
 ## Cloudflare deployment
 
-[wrangler.jsonc](web/wrangler.jsonc) defines separate preview and production Worker names. The [preview](https://global-economic-intelligence-preview.nicholai-gay.workers.dev) and [production](https://global-economic-intelligence.nicholai-gay.workers.dev) deployments use distinct `workers.dev` URLs and leave existing Cloudflare sites and domains untouched. No secret or paid service is required. For a fresh checkout or redeployment, from `web/`:
+[wrangler.jsonc](web/wrangler.jsonc) defines separate preview and production Worker names. The production Worker serves [econ.nickcloud.dev](https://econ.nickcloud.dev) as a Cloudflare Custom Domain and retains its [workers.dev URL](https://global-economic-intelligence.nicholai-gay.workers.dev). The [preview Worker](https://global-economic-intelligence-preview.nicholai-gay.workers.dev) has its own `workers.dev` URL. The existing `infernomics.nickcloud.dev` site remains untouched. No secret or paid service is required. For a fresh checkout or redeployment, from `web/`:
 
 ```bash
 npx wrangler login
@@ -86,7 +86,7 @@ npm run deploy:preview
 npm run deploy:production
 ```
 
-The scripts select the Cloudflare environment, build assets and Worker together, verify the intended Worker name, and deploy the generated configuration. They do not alter unrelated DNS records. Attach a custom domain only after reviewing existing routes. Roll back the named Worker via its Cloudflare **Deployments** page or `npx wrangler rollback --name global-economic-intelligence` after selecting the previous version. See Cloudflare's [rollback instructions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
+The scripts select the Cloudflare environment, build assets and Worker together, verify the intended Worker name, and deploy the generated configuration. The production configuration attaches only `econ.nickcloud.dev`; Cloudflare manages its DNS and certificate. Roll back the named Worker via its Cloudflare **Deployments** page or `npx wrangler rollback --name global-economic-intelligence` after selecting the previous version. See Cloudflare's [rollback instructions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
 Cloudflare lists a Free tier with 100,000 Worker requests/day and 10 ms CPU per invocation. Its Paid tier starts at US$5/month with usage-based overages. The app needs no paid model, D1, R2 or Vectorize, and renders PDFs in the browser to avoid Worker PDF CPU cost. Check [current pricing](https://developers.cloudflare.com/workers/platform/pricing/) before operating at scale. No paid service has been enabled.
 
