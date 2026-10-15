@@ -1,0 +1,140 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
+import { COUNTRIES, INDICATORS, INDICATOR_CODES, commonPeriod, type Analysis, type Country, type Indicator, type Series } from './domain';
+import './style.css';
+
+type View = 'overview' | 'compare' | 'analyst' | 'methodology';
+const countryEntries = Object.entries(COUNTRIES) as [Country, string][];
+const indicatorEntries = Object.entries(INDICATORS) as [Indicator, typeof INDICATORS[Indicator]][];
+const params = new URLSearchParams(location.search);
+const initialCountry = (params.get('country') && Object.hasOwn(COUNTRIES, params.get('country')!) ? params.get('country') : 'NL') as Country;
+const initialIndicator = (params.get('indicator') && Object.hasOwn(INDICATORS, params.get('indicator')!) ? params.get('indicator') : INDICATOR_CODES[0]) as Indicator;
+const initialCountries = (params.get('countries') ?? 'NL,DE,FR').split(',').filter(c => Object.hasOwn(COUNTRIES, c)).slice(0, 4) as Country[];
+const initialView = (['overview','compare','analyst','methodology'].includes(params.get('view') ?? '') ? params.get('view') : 'overview') as View;
+const initialMode = params.get('mode') === 'live' ? 'live' : 'demo';
+const initialStart = Math.max(2000, Math.min(new Date().getFullYear() - 1, Number(params.get('start')) || 2010));
+const initialEnd = Math.max(initialStart + 1, Math.min(new Date().getFullYear(), Number(params.get('end')) || new Date().getFullYear()));
+
+async function api<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`/api/${path}`, options);
+  const content = await response.json();
+  if (!response.ok) throw new Error((content as { error?: string }).error || 'The service is unavailable.');
+  return content as T;
+}
+const date = (iso: string) => new Date(iso).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }) + ' UTC';
+const number = (n: number) => new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2, minimumFractionDigits: 1 }).format(n);
+const currentYear = new Date().getFullYear();
+
+function CountryPicker({ value, onChange, label }: { value: Country; onChange: (c: Country) => void; label: string }) {
+  const [text, setText] = useState<string>(COUNTRIES[value]);
+  useEffect(() => setText(COUNTRIES[value]), [value]);
+  return <label className="field"><span>{label}</span><input list="country-options" value={text} onChange={e => {
+    setText(e.target.value);
+    const match = countryEntries.find(([code, name]) => name.toLowerCase() === e.target.value.toLowerCase() || code.toLowerCase() === e.target.value.toLowerCase());
+    if (match) onChange(match[0]);
+  }} onBlur={() => setText(COUNTRIES[value])} aria-describedby="country-help"/>
+  <datalist id="country-options">{countryEntries.map(([code, name]) => <option key={code} value={name}/>)}</datalist>
+  <small id="country-help">Start typing a supported country</small></label>;
+}
+
+function Chart({ series, indicator, height = 300 }: { series: Series[]; indicator: Indicator; height?: number }) {
+  const years = [...new Set(series.flatMap(s => s.observations.map(o => o.year)))].sort((a, b) => a - b);
+  const rows = years.map(year => ({ year, ...Object.fromEntries(series.map(s => [s.country, s.observations.find(o => o.year === year)?.value ?? null])) }));
+  const palette = ['#2366b3','#9b6a25','#654caa','#287b72'];
+  const dashes = [undefined,'6 4','2 4','10 3 2 3'];
+  return <div className="chart-wrap" role="img" aria-label={`${INDICATORS[indicator].name} ${series.every(s => s.observations.length <= 1) ? 'saved observation chart' : 'annual trend chart'}. Values are also shown in the data table.`}>
+    <ResponsiveContainer width="100%" height={height}><LineChart data={rows} margin={{ top: 12, right: 16, left: 0, bottom: 5 }}>
+      <CartesianGrid stroke="#e5e8e9" vertical={false}/><XAxis dataKey="year" tick={{ fill: '#536171', fontSize: 12 }}/>
+      <YAxis tick={{ fill: '#536171', fontSize: 12 }} width={48} unit="%"/>
+      <Tooltip formatter={(value, name) => [`${number(Number(value))}%`, COUNTRIES[name as Country] ?? String(name)]} labelFormatter={v => `Observation year ${v}`}/>
+      {series.length > 1 && <Legend formatter={v => COUNTRIES[v as Country] ?? v}/>}
+      {series.map((s, i) => <Line key={s.country} dataKey={s.country} name={s.country} type="monotone" connectNulls={false} stroke={palette[i]} strokeWidth={2.6} strokeDasharray={dashes[i]} dot={{ r: 2.5 }} activeDot={{ r: 5 }}/>) }
+    </LineChart></ResponsiveContainer>
+  </div>;
+}
+
+function DataTable({ series, indicator }: { series: Series[]; indicator: Indicator }) {
+  const years = [...new Set(series.flatMap(s => s.observations.map(o => o.year)))].sort((a,b) => b-a);
+  return <div className="table-scroll"><table><caption>{INDICATORS[indicator].name} · annual observations · {INDICATORS[indicator].unit}</caption><thead><tr><th scope="col">Year</th>{series.map(s => <th scope="col" key={s.country}>{COUNTRIES[s.country]}</th>)}</tr></thead><tbody>
+    {years.map(year => <tr key={year}><th scope="row">{year}</th>{series.map(s => { const value = s.observations.find(o => o.year === year)?.value; return <td key={s.country}>{value === undefined ? '—' : number(value)}</td>; })}</tr>)}
+  </tbody></table></div>;
+}
+
+function App() {
+  const [view, setView] = useState<View>(initialView);
+  const [mode, setMode] = useState<'demo' | 'live'>(initialMode);
+  const [country, setCountry] = useState<Country>(initialCountry);
+  const [indicator, setIndicator] = useState<Indicator>(initialIndicator);
+  const [compCountries, setCompCountries] = useState<Country[]>(initialCountries.length >= 2 ? initialCountries : ['NL','DE']);
+  const [start, setStart] = useState(initialStart), [end, setEnd] = useState(initialEnd);
+  const [overview, setOverview] = useState<Series[]>([]), [comparison, setComparison] = useState<Series[]>([]);
+  const [overviewError, setOverviewError] = useState(''), [compareError, setCompareError] = useState('');
+  const [overviewLoading, setOverviewLoading] = useState(true), [compareLoading, setCompareLoading] = useState(false);
+  const [question, setQuestion] = useState('What do the latest available economic indicators show?');
+  const [analysis, setAnalysis] = useState<Analysis | null>(null), [analysisError, setAnalysisError] = useState(''), [analysing, setAnalysing] = useState(false), [exporting, setExporting] = useState(false);
+  const [showTable, setShowTable] = useState(false);
+
+  useEffect(() => { const next = new URLSearchParams({ view, mode, country, indicator, countries: compCountries.join(','), start: String(start), end: String(end) }); history.replaceState(null, '', `?${next.toString()}`); }, [view,mode,country,indicator,compCountries,start,end]);
+  useEffect(() => { if (view !== 'overview') return; const controller = new AbortController(); setOverviewLoading(true); setOverviewError('');
+    Promise.all(INDICATOR_CODES.map(code => api<Series>(`series?country=${country}&indicator=${code}&start=2000&end=${currentYear}&mode=${mode}`, { signal: controller.signal })))
+      .then(result => { if (!controller.signal.aborted) setOverview(result); }).catch(e => { if (e.name !== 'AbortError' && !controller.signal.aborted) setOverviewError(e.message); }).finally(() => { if (!controller.signal.aborted) setOverviewLoading(false); });
+    return () => controller.abort(); }, [country, mode, view]);
+  useEffect(() => { if (view !== 'compare') return; const controller = new AbortController(); setCompareLoading(true); setCompareError('');
+    Promise.all(compCountries.map(code => api<Series>(`series?country=${code}&indicator=${indicator}&start=${start}&end=${end}&mode=${mode}`, { signal: controller.signal })))
+      .then(result => { if (!controller.signal.aborted) setComparison(result); }).catch(e => { if (e.name !== 'AbortError' && !controller.signal.aborted) setCompareError(e.message); }).finally(() => { if (!controller.signal.aborted) setCompareLoading(false); });
+    return () => controller.abort(); }, [compCountries,indicator,start,end,mode,view]);
+  const overviewSelected = useMemo(() => overview.find(s => s.indicator === indicator), [overview,indicator]);
+  const common = commonPeriod(comparison);
+  const toggleCountry = (code: Country) => setCompCountries(prev => prev.includes(code) ? (prev.length > 2 ? prev.filter(v => v !== code) : prev) : (prev.length < 4 ? [...prev,code] : prev));
+  async function ask() { setAnalysis(null); setAnalysisError(''); setAnalysing(true);
+    try { setAnalysis(await api<Analysis>('analysis', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ question, country, mode }) })); }
+    catch (error) { setAnalysisError((error as Error).message); } finally { setAnalysing(false); } }
+  async function exportPdf() { if (!analysis) return; setExporting(true);
+    try { const { renderBriefing } = await import('../worker/pdf'); const pdf = await renderBriefing(analysis);
+      const blob = new Blob([pdf as BlobPart], { type: 'application/pdf' }); const href = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = href; a.download = `economic-briefing-${analysis.country.toLowerCase()}.pdf`; a.click(); setTimeout(() => URL.revokeObjectURL(href), 1000);
+    } catch (error) { setAnalysisError((error as Error).message); } finally { setExporting(false); } }
+  return <><a className="skip" href="#main">Skip to content</a><div className="shell">
+    <aside className="sidebar"><div className="brand"><span className="brand-mark">EI</span><span>ECONOMIC<br/>INTELLIGENCE</span></div>
+      <div className="sidebar-label">WORKSPACE</div><nav aria-label="Primary navigation">
+        {([['overview','Overview'],['compare','Compare'],['analyst','Ask the analyst'],['methodology','Methodology']] as [View,string][]).map(([key,label],i) => <button key={key} className={`nav-item ${view === key ? 'active' : ''}`} onClick={() => setView(key)} aria-current={view === key ? 'page' : undefined}><span className="nav-index">0{i+1}</span>{label}<span className="nav-arrow">↗</span></button>)}
+      </nav><div className="sidebar-bottom"><span className="dot"/> WORLD BANK DATA<br/><small>Annual observations · sourced</small></div>
+    </aside><div className="main-area"><header className="topbar"><span>GLOBAL ECONOMIC INTELLIGENCE AGENT</span><span className="topbar-right">RESEARCH WORKSPACE <span className="topbar-rule"/> 2026</span></header>
+      <main id="main" tabIndex={-1}><div className="mode-bar" role="group" aria-label="Data mode"><span>{mode === 'demo' ? 'SAVED DEMONSTRATION · REVIEWED 15 OCT 2026 · ROUNDED VALUES' : 'LIVE WORLD BANK API · ANNUAL SERIES'}</span><div><button className={mode === 'demo' ? 'on' : ''} onClick={()=>setMode('demo')} aria-pressed={mode === 'demo'}>Saved demo</button><button className={mode === 'live' ? 'on' : ''} onClick={()=>setMode('live')} aria-pressed={mode === 'live'}>Live data</button></div></div>
+        {view === 'overview' && <><section className="page-heading"><div className="eyebrow">01 / ECONOMIC OVERVIEW</div><h1>An economy, in context.</h1><p>Inspect a dated snapshot, or switch to live World Bank data for historical trends. Every observation keeps its year and source.</p></section>
+          <div className="control-strip"><CountryPicker value={country} onChange={setCountry} label="Economy"/><div className="control-note">Five supported economies<br/><strong>Annual World Bank series</strong></div></div>
+          {overviewLoading && <div className="state" role="status">{mode === 'demo' ? 'Loading saved observations…' : 'Retrieving World Bank observations…'}</div>}
+          {overviewError && <div className="state error" role="alert"><strong>Data could not be loaded.</strong><p>{overviewError}</p><button onClick={() => setCountry(country === 'NL' ? 'DE' : 'NL')}>Try another economy</button></div>}
+          {!overviewLoading && !overviewError && <><div className="metric-grid">{overview.map(s => { const latest = s.observations[0]; return <button className={`metric ${indicator === s.indicator ? 'selected' : ''}`} key={s.indicator} onClick={() => setIndicator(s.indicator)} aria-pressed={indicator === s.indicator}>
+            <span className="metric-title">{INDICATORS[s.indicator].short}<span aria-hidden="true">↗</span></span><strong>{latest ? `${number(latest.value)}%` : '—'}</strong><span className="metric-foot">{latest ? `${latest.year} observation` : 'No observation'} · {s.unit}</span></button>; })}</div>
+            {overviewSelected && <section className="panel"><div className="panel-head"><div><div className="eyebrow">{mode === 'demo' ? 'SAVED OBSERVATION' : 'HISTORICAL SERIES'}</div><h2>{INDICATORS[indicator].name}</h2><p>{INDICATORS[indicator].definition}</p></div><span className="source-tag">WORLD BANK · {mode === 'demo' ? 'SNAPSHOT' : 'ANNUAL'}</span></div>
+              {overviewSelected.observations.length ? <><Chart series={[overviewSelected]} indicator={indicator}/><div className="panel-actions"><button className="text-button" onClick={() => setShowTable(!showTable)} aria-expanded={showTable}>{showTable ? 'Hide' : 'View'} underlying data <span>↘</span></button><a href={overviewSelected.sourceUrl} target="_blank" rel="noreferrer">Open source ↗</a></div>{showTable && <DataTable series={[overviewSelected]} indicator={indicator}/>}</> : <div className="state">No observations are available for this series.</div>}
+              <div className="meta-line">{mode === 'demo' ? 'Snapshot reviewed' : overviewSelected.cacheStatus === 'cached' ? 'Cached live series; originally retrieved' : 'Retrieved'} {date(overviewSelected.retrievedAt)} · {overviewSelected.providerUpdatedAt ? `Provider update ${overviewSelected.providerUpdatedAt}` : 'Provider update date unavailable'} · Missing values are omitted</div></section>}
+            <div className="editorial-note"><span>READING THE DATA</span><p>These are annual measurements, not real-time readings. GDP growth measures change in real output, inflation measures change in consumer prices, and unemployment is a modeled share of the labor force.</p></div>
+          </>}
+        </>}
+        {view === 'compare' && <><section className="page-heading"><div className="eyebrow">02 / COUNTRY COMPARISON</div><h1>Compare on the same scale.</h1><p>Choose two to four economies, one indicator and a shared date window. Missing observations stay visible as gaps.</p></section>
+          <div className="control-panel"><div className="field"><span>Economies <small>({compCountries.length} selected)</small></span><div className="country-checks">{countryEntries.map(([code,name]) => <label key={code} className={compCountries.includes(code) ? 'checked' : ''}><input type="checkbox" checked={compCountries.includes(code)} onChange={() => toggleCountry(code)} disabled={!compCountries.includes(code) && compCountries.length >= 4}/>{name}</label>)}</div></div><div className="compare-controls"><label className="field"><span>Indicator</span><select value={indicator} onChange={e => setIndicator(e.target.value as Indicator)}>{indicatorEntries.map(([code,meta]) => <option key={code} value={code}>{meta.short}</option>)}</select></label><label className="field"><span>From</span><select value={start} onChange={e => setStart(Math.min(Number(e.target.value),end-1))}>{Array.from({length:currentYear-1999},(_,i)=>2000+i).map(y=><option key={y}>{y}</option>)}</select></label><label className="field"><span>To</span><select value={end} onChange={e => setEnd(Math.max(Number(e.target.value),start+1))}>{Array.from({length:currentYear-1999},(_,i)=>2000+i).map(y=><option key={y}>{y}</option>)}</select></label></div></div>
+          {compareLoading && <div className="state" role="status">{mode === 'demo' ? 'Loading saved country observations…' : 'Retrieving aligned country series…'}</div>}{compareError && <div className="state error" role="alert">{compareError}</div>}
+          {!compareLoading && !compareError && comparison.length > 0 && <><section className="panel"><div className="panel-head"><div><div className="eyebrow">{mode === 'demo' ? 'SAVED CROSS-SECTION' : 'ALIGNED TREND'} / {start}–{end}</div><h2>{INDICATORS[indicator].name}</h2></div><span className="source-tag">UNIT: {INDICATORS[indicator].unit}</span></div><Chart series={comparison} indicator={indicator} height={350}/>
+            <div className="comparison-summary">{common ? <><strong>{common}</strong><span>Latest year shared by all selected economies. {comparison.map(s => `${COUNTRIES[s.country]} ${s.observations.find(o=>o.year===common)?.value.toFixed(1) ?? '—'}%`).join(' · ')}</span></> : <span>No common observed year in this window.</span>}</div>
+            <p className="small-copy">{mode === 'demo' ? 'Saved observations' : 'Latest individual observations'}: {comparison.map(s => `${COUNTRIES[s.country]} ${s.observations[0]?.year ?? 'none'}`).join(' · ')}. Differences in years can make latest-value comparisons misleading.</p>
+            <DataTable series={comparison} indicator={indicator}/><div className="meta-line">{comparison.map(s=><div key={s.country}><a href={s.sourceUrl} target="_blank" rel="noreferrer">{COUNTRIES[s.country]} source ↗</a> · {s.stale ? 'Snapshot reviewed' : s.cacheStatus === 'cached' ? 'Cached; originally retrieved' : 'Retrieved'} {date(s.retrievedAt)}</div>)}</div></section></>}
+        </>}
+        {view === 'analyst' && <><section className="page-heading"><div className="eyebrow">03 / ASK THE ANALYST</div><h1>Ask, then inspect.</h1><p>Ask about supported annual indicators. The analyst calculates descriptive findings from observed values and links every finding to its source.</p></section>
+          <section className="question-panel"><CountryPicker value={country} onChange={setCountry} label="Selected economy"/><label className="field"><span>Research question</span><textarea value={question} onChange={e => setQuestion(e.target.value)} maxLength={500} rows={3} placeholder="What do the latest available indicators show for the Netherlands?"/></label><div className="suggestions"><span>TRY A QUESTION</span>{['What do the latest available indicators show?','What is the latest unemployment observation?','What are the latest growth and inflation observations?'].map(q=><button key={q} onClick={()=>setQuestion(q)}>{q} ↗</button>)}</div><div className="question-actions"><button className="primary" onClick={ask} disabled={analysing || question.trim().length < 8}>{analysing ? mode === 'demo' ? 'Calculating from saved observations…' : 'Retrieving and calculating…' : 'Run analysis'} <span>→</span></button><small>Selected country: {COUNTRIES[country]} · No paid model call</small></div></section>
+          {analysisError && <div className="state error" role="alert">{analysisError}</div>}
+          {analysis && <article className="analysis"><div className="analysis-top"><div><div className="eyebrow">EVIDENCE-LED ASSESSMENT</div><h2>{COUNTRIES[analysis.country]} at a glance</h2><p>{analysis.question}</p></div><button className="primary secondary" onClick={exportPdf} disabled={exporting}>{exporting ? 'Preparing PDF…' : 'Export this briefing ↓'}</button></div>
+            <div className="analysis-meta">Generated {date(analysis.generatedAt)} · {analysis.series.some(s=>s.stale) ? 'Saved demonstration' : 'Live annual observations'} · Deterministic analysis</div>
+            <div className="analysis-columns"><div><h3>Key findings</h3>{analysis.findings.length ? <ol className="findings">{analysis.findings.map((f,i)=><li key={i}>{f.text} <span>{f.evidenceIds.map(id=><a key={id} href={`#${id.replaceAll(':','-')}`}>[{id}]</a>)}</span></li>)}</ol> : <p>There is not enough observed data for a finding.</p>}
+              <h3>Interpretation</h3>{analysis.interpretation.map((s,i)=><p key={i}>{s}</p>)}<h3>Risks</h3>{analysis.risks.map((s,i)=><p key={i}>{s}</p>)}</div><aside className="evidence-rail"><h3>Source evidence</h3>{analysis.evidence.map(e=><div className="evidence-item" id={e.id.replaceAll(':','-')} key={e.id}><strong>{e.label}</strong><span>{e.detail}</span>{e.passage && <blockquote>“{e.passage}”</blockquote>}<a href={e.url} target="_blank" rel="noreferrer">{e.kind === 'report' ? `Open report page ${e.page} ↗` : 'View World Bank series ↗'}</a></div>)}<div className="report-status"><strong>Report excerpts</strong><p>{analysis.reportStatus}</p></div></aside></div>
+            <div className="limitations"><h3>Limits of this assessment</h3><ul>{analysis.limitations.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
+            <details className="raw-evidence"><summary>Inspect supporting observations</summary>{analysis.series.map(s=><DataTable key={s.indicator} series={[s]} indicator={s.indicator}/>)}</details>
+          </article>}
+        </>}
+        {view === 'methodology' && <><section className="page-heading"><div className="eyebrow">04 / METHODOLOGY</div><h1>What the evidence can say.</h1><p>A concise account of the sources, calculations, and deliberate limits of this release.</p></section><div className="method-grid"><section className="panel"><h2>Data</h2><p>Annual World Bank Indicators API observations for five countries. GDP growth and consumer-price inflation are annual percentage rates. Unemployment is the modeled ILO estimate, expressed as a percentage of the labor force.</p><p>The saved demonstration has rounded 2024 and 2025 values transcribed from official World Bank pages reviewed 15 October 2026. It has one observation per indicator and cannot establish a trend. Live mode retrieves full series. Missing observations are left blank.</p></section><section className="panel"><h2>Analysis</h2><p>Findings are calculated in application code. A change from one annual percentage value to another is reported in percentage points. No interpolation, forecast, causal explanation or personalized investment advice is generated.</p><p>The public analyst currently uses no paid model calls. Report excerpts appear only when verified passage metadata is available; this release does not claim report support where there is none.</p></section><section className="panel"><h2>Freshness and availability</h2><p>Live series are fetched through the Cloudflare Worker and cached for six hours. A failed upstream request is shown as an error. Retrieval date is separate from observation year.</p><p>Exports are rendered from the exact analysis object displayed in the browser. The PDF does not rerun retrieval or generation.</p></section></div></>}
+      </main><footer>GLOBAL ECONOMIC INTELLIGENCE AGENT <span>Source: World Bank Indicators API · <a href="https://data.worldbank.org" target="_blank" rel="noreferrer">data.worldbank.org ↗</a></span></footer>
+    </div></div></>;
+}
+
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

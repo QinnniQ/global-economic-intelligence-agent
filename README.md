@@ -1,362 +1,97 @@
-<p align="center">
-  <img src="assets/banner.png" width="100%" alt="Global Economic Intelligence Agent Banner"/>
-</p>
+# Global Economic Intelligence Agent
 
-<h1 align="center">🌍 Global Economic Intelligence Agent</h1>
+An economic research workspace that asks: **What is happening in this economy, what evidence supports it, and what deserves closer attention?** The public app is React and TypeScript with a Cloudflare Worker API. It starts with a dated, genuine-data demonstration and offers a live World Bank mode.
 
-<p align="center"><a href="https://profile.nickcloud.dev/">Nicholai Gay's AI engineering portfolio</a> · <a href="https://www.linkedin.com/in/nicholai-gay-201905148/">LinkedIn</a></p>
+[Nicholai Gay's AI engineering portfolio](https://profile.nickcloud.dev/) · [LinkedIn](https://www.linkedin.com/in/nicholai-gay-201905148/) · [CI status](https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml)
 
-<p align="center">
-  <strong>AI-powered macroeconomic intelligence using live data, PDF-based RAG, and LLM analysis</strong>
-</p>
+![Economic overview in the saved demonstration](docs/overview.png)
 
-<p align="center">
-  <a href="https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/QinnniQ/global-economic-intelligence-agent/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Python" src="https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white">
-  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-Backend-009688?style=for-the-badge&logo=fastapi&logoColor=white">
-  <img alt="Streamlit" src="https://img.shields.io/badge/Streamlit-Frontend-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white">
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white">
-  <img alt="OpenAI" src="https://img.shields.io/badge/OpenAI-LLM%20Powered-412991?style=for-the-badge&logo=openai&logoColor=white">
-  <img alt="LangChain" src="https://img.shields.io/badge/LangChain-RAG%20Engine-1C1E24?style=for-the-badge">
-  <img alt="ChromaDB" src="https://img.shields.io/badge/ChromaDB-Vector%20Store-4ECDC4?style=for-the-badge">
-  <img alt="Plotly" src="https://img.shields.io/badge/Plotly-Interactive%20Charts-3F4F75?style=for-the-badge&logo=plotly&logoColor=white">
-</p>
+**Release status, 15 October 2026:** the web app builds and deterministic tests pass. The saved-data overview, comparison, analyst and PDF download were exercised in a browser. A live Netherlands analysis also retrieved annual World Bank observations and their provider-update date. It is **not deployed** to the owner's Cloudflare account: Wrangler reported no authenticated account on this machine. The deployed URL still needs a post-deploy smoke test.
 
-<p align="center">
-  <em>A production-minded full-stack AI application combining real-time macroeconomic indicators, document retrieval, and LLM-based synthesis.</em>
-</p>
+## Visitor experience
 
----
+- Explore GDP growth, consumer-price inflation and modeled ILO unemployment for the Netherlands, Germany, France, the United Kingdom and the United States.
+- Use a clearly labelled saved demonstration without any credentials. Live mode retrieves full annual World Bank series.
+- Compare two to four countries across a chosen indicator and date window, with an aligned chart, table, common observation year and shareable URL.
+- Ask a single-country question and inspect source-linked findings, relevant page-linked report passages and explicit limitations.
+- Export the **displayed** analysis as a PDF in the browser. Export never reruns retrieval or analysis.
 
-## Overview
+The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The Python and Streamlit prototype remains for local research and is not part of the Cloudflare deployment.
 
-The **Global Economic Intelligence Agent** combines live macroeconomic data with document retrieval and LLM reasoning to produce grounded economic analysis through an interactive web interface.
+## Run and verify
 
-It brings together:
+```bash
+cd web
+npm ci
+npm run dev
+```
 
-- **Live macroeconomic indicators** such as GDP growth, inflation, and unemployment
-- **PDF-based Retrieval-Augmented Generation (RAG)** over economic reports
-- **LLM synthesis** that combines retrieved context with current indicator data
-- **Interactive dashboards and global visualizations**
-- **Exportable PDF economic briefings**
-- **Automated verification** with pytest and GitHub Actions
+Open the URL printed by Vite, normally `http://127.0.0.1:5173`. The saved demonstration needs no credentials. Live mode needs outbound access to `api.worldbank.org`.
 
-The project is designed as an end-to-end AI system rather than a standalone prompt demo: data retrieval, RAG, backend APIs, LLM analysis, visualization, report generation, packaging, and CI are separated into explicit application and engineering layers.
+```bash
+cd web
+npm test
+npm run build
+```
 
----
+The legacy Python prototype can still be started with `docker compose up --build` after copying `.env.example` to `.env` and supplying an `OPENAI_API_KEY`. Ingestion is disabled unless `INGEST_ADMIN_TOKEN` is set, and Compose binds the legacy services to localhost. Its raw model endpoints must **not** be exposed publicly. The [offline analysis trace](docs/offline_trace.md) walks through its inspectable `raw_data`, `rag_passages`, `rag_sources`, and `rag_status` fields with stubbed evidence and no API key.
 
 ## Architecture
 
-```text
-User
-  ↓
-Streamlit UI
-  ↓
-FastAPI backend
-  ├── Live macro data → World Bank API
-  ├── PDF retrieval → ChromaDB
-  └── LLM analysis → OpenAI
-  ↓
-Grounded analysis + charts + PDF report
+```mermaid
+flowchart LR
+  B[Browser: React workspace] -->|Same-origin /api| W[Cloudflare Worker]
+  W --> WB[World Bank Indicators API]
+  W --> S[Versioned rounded demonstration]
+  W --> R[Reviewed report passage index]
+  B -->|Displayed analysis object| P[Browser PDF renderer]
+  L[Local-only Python prototype] --> C[(Local Chroma store)]
 ```
 
-Docker Compose runs the FastAPI backend and Streamlit frontend as separate services on a shared application network. The frontend receives the backend service URL through an environment variable rather than relying on a hard-coded container address.
+The Worker needs no database or persistent filesystem. Its static assets and API deploy together. The existing Chroma directory is a persistent **local** artifact; no Vectorize migration or reindex is claimed. Cloudflare's [React/Worker tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/), [Python package guidance](https://developers.cloudflare.com/workers/languages/python/packages/) and [Worker limits](https://developers.cloudflare.com/workers/platform/limits/) informed this choice.
 
----
+## Data and evidence
 
-## Inspect a decision trace
+The Worker accepts only five country codes and three indicator IDs. Live requests include a date range, page and page size. The adapter checks response shape, fetches reported pages (up to 20), drops null and malformed values without substituting zero, and records retrieval and provider-update timestamps. Requests time out after eight seconds and receive at most one retry for a temporary failure. Live series are cached for six hours. An upstream failure is displayed as an error; stale values are not silently substituted.
 
-The [offline analysis trace](docs/offline_trace.md) follows one synthetic question through indicator selection, a report passage, and a stubbed answer, then shows what happens when retrieval returns nothing. It is backed by tests and requires no API key. In a live response, `raw_data`, `rag_passages`, `rag_sources`, and `rag_status` make the evidence path inspectable. Passage IDs are available for citations, while factual accuracy still requires review against the source report.
+[Indicator definitions and units](web/src/domain.ts) distinguish GDP growth from GDP level and inflation from the CPI level. Changes between annual rates are reported in **percentage points**. Observation year is separate from retrieval date. The latest year may differ by country or indicator.
 
----
+The [saved demonstration](web/src/demo.ts) contains World Bank values rounded to one decimal: 2024 GDP growth and inflation, and 2025 modeled unemployment. They were transcribed from official [Netherlands/Germany/France](https://data.worldbank.org/?locations=BE-NL-LU-DE-FR-IT) and [United Kingdom/Germany/United States/France](https://data.worldbank.org/?locations=GB-DE-US-FR) pages reviewed on 15 October 2026. The provider may revise those pages. The saved demo has **one observation per series** and cannot establish a trend.
 
-## Screenshots
+The hosted [report index](web/worker/reports.ts) has two short passages reviewed against repository PDFs: ECB *Economic Bulletin* Issue 7 / 2025, page 11, and OECD *Interim Economic Outlook* September 2025, page 13. Stable passage IDs, title, publisher, official link, publication date, page, checksum and ingestion version are recorded. Retrieval requires matching geography and topic. Report excerpts are dated context, not validation of World Bank values. Numerical findings cite only the series used, and citation IDs are checked in code. Missing relevant passages are disclosed.
 
-### Main Dashboard
-![Main Dashboard](screenshots/main.png)
+## Privacy and limits
 
-### AI Economic Report Generator
-![Generate Report](screenshots/generate.png)
+The public app stores no prompts or PDFs. It has no client-side credentials, paid inference, public ingestion or file upload. React renders external text safely. API inputs are bounded. A small per-isolate request guard reduces rapid repeated calls; it is **not** a global rate limit. Configure an account-level Cloudflare rate limiting rule for `/api/*` before high-traffic promotion. Structured failure logs contain request ID, route, status and error type, not question text.
 
-### Global Economic Heatmap
-![Heatmap](screenshots/heatmap.png)
+This release has five countries and three indicators. Its report index is curated rather than a general search corpus. It does not support EU or euro-area aggregates, multi-country analyst questions, forecasts or live LLM synthesis. Annual series and report dates can lag economic events. The PDF uses standard Helvetica and ASCII-normalised text for portability.
 
----
+## Evaluation
 
-## Features
+`web/tests/product.test.ts` covers country aliases and ambiguity, null and zero values, pagination, mixed years, percentage-point changes, upstream failure, report relevance and malicious input, citation IDs, and concurrent isolated PDFs. The [question evaluation set](web/eval/questions.v1.json) defines evidence expectations and a human assessment rubric. Automated checks assess structure and arithmetic; human review is required for claim support and interpretation.
 
-### 1. Real-Time Macroeconomic Dashboard
-- Live World Bank indicator data
-- GDP growth, inflation, and unemployment views
-- Country-aware dashboard controls
-- Plotly trend visualizations and sparklines
+Measured locally on 15 October 2026: **14 web tests passed**, the TypeScript production build and production Worker dry run passed, and representative saved-demo and live-data one-page PDFs were rendered and visually inspected. Saved-demo browser flows were checked at desktop and mobile widths; a live Netherlands analyst answer returned annual World Bank data. No accuracy, latency or accessibility score is claimed.
 
-### 2. Global Economic Heatmap
-- Cross-country indicator comparison
-- Interactive geographic visualization
+## Cloudflare deployment
 
-### 3. Ask the AI Economist
-- Country and indicator detection from user questions
-- LLM-generated macro trend summaries
-- RAG-enhanced analysis grounded in retrieved report excerpts
-- Combined reasoning over live data and document context
-
-### 4. PDF RAG Engine
-- Ingests and vectorizes economic reports
-- Stores embeddings in ChromaDB
-- Retrieves relevant passages to support generated analysis
-
-### 5. Exportable Economic Briefings
-- Generates downloadable PDF reports
-- Includes detected country, indicators, analysis, and retrieved context
-
----
-
-## Tech Stack
-
-### Backend
-- Python
-- FastAPI
-- OpenAI API
-- LangChain
-- ChromaDB
-- World Bank API
-- ReportLab
-
-### Frontend
-- Streamlit
-- Plotly
-- Pandas
-- Custom CSS
-- gTTS for optional audio playback
-
-### Packaging & Verification
-- Docker
-- Docker Compose
-- pytest
-- pytest-cov
-- GitHub Actions
-- Environment-based configuration
-- Container health check for the backend
-
----
-
-## Repository Structure
-
-```text
-.
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-├── assets/
-├── chroma_store/
-├── data/
-├── reports_out/
-├── screenshots/
-├── src/
-│   ├── agent/
-│   │   └── economic_agent.py
-│   ├── backend/
-│   │   ├── rags/
-│   │   ├── routes/
-│   │   ├── tools/
-│   │   ├── config.py
-│   │   └── server.py
-│   └── frontend/
-│       └── streamlit_app.py
-├── tests/
-│   └── test_core.py
-├── .dockerignore
-├── .env.example
-├── .gitignore
-├── Dockerfile
-├── docker-compose.yml
-├── pytest.ini
-├── requirements-dev.txt
-├── requirements.txt
-└── README.md
-```
-
----
-
-## Testing & CI
-
-The repository includes an initial automated test suite covering deterministic application logic and a backend smoke test.
-
-Current tests verify:
-
-- the FastAPI `/health` endpoint
-- country detection behavior
-- default country fallback behavior
-- single-indicator detection
-- multi-indicator detection
-- default economic-indicator selection
-
-Run the suite locally with:
+[wrangler.jsonc](web/wrangler.jsonc) defines separate preview and production Worker names. No secret or paid service is required. From `web/`:
 
 ```bash
-pip install -r requirements-dev.txt
-pytest -q --cov=src --cov-report=term-missing
+npx wrangler login
+npm run deploy:preview
+# Open the printed workers.dev URL and check overview, compare, analyst and PDF.
+# Switch to Live data and verify a Netherlands series and timestamps.
+npm run deploy:production
 ```
 
-The GitHub Actions workflow runs automatically on pushes and pull requests targeting `main`:
+The scripts select the Cloudflare environment, build assets and Worker together, verify the intended Worker name, and deploy the generated configuration. They do not alter unrelated DNS records. Attach a custom domain only after reviewing existing routes. Roll back the named Worker via its Cloudflare **Deployments** page or `npx wrangler rollback --name global-economic-intelligence` after selecting the previous version. See Cloudflare's [rollback instructions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
-```text
-Push / Pull Request
-        ↓
-Install Python dependencies
-        ↓
-Run pytest + coverage report
-        ↓
-Tests pass
-        ↓
-Build Docker image
-```
+Cloudflare lists a Free tier with 100,000 Worker requests/day and 10 ms CPU per invocation. Its Paid tier starts at US$5/month with usage-based overages. The app needs no paid model, D1, R2 or Vectorize, and renders PDFs in the browser to avoid Worker PDF CPU cost. Check [current pricing](https://developers.cloudflare.com/workers/platform/pricing/) before operating at scale. No paid service has been enabled.
 
-The current deterministic tests use a non-secret placeholder API key and do not make paid OpenAI API calls. Coverage reporting is included to make untested areas visible; the suite is intentionally being expanded rather than presenting an inflated coverage claim.
+## Additional material
 
----
-
-## Run with Docker Compose
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/QinnniQ/global-economic-intelligence-agent.git
-cd global-economic-intelligence-agent
-```
-
-### 2. Configure environment variables
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-macOS / Linux:
-
-```bash
-cp .env.example .env
-```
-
-Add your OpenAI API key to `.env`:
-
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-MODEL=gpt-4o-mini
-```
-
-### 3. Build and start both services
-
-```bash
-docker compose up --build
-```
-
-Then open:
-
-```text
-Streamlit UI: http://localhost:8501
-FastAPI docs: http://localhost:8000/docs
-Health check:  http://localhost:8000/health
-```
-
-Stop the stack with:
-
-```bash
-docker compose down
-```
-
----
-
-## Running Locally without Docker
-
-### 1. Create and activate a Python 3.11 environment
-
-Use your preferred environment manager, then install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and add your OpenAI API key.
-
-### 3. Start the FastAPI backend
-
-```bash
-uvicorn src.backend.server:app --reload --port 8000
-```
-
-### 4. Start the Streamlit frontend
-
-Open a second terminal using the same environment, then run:
-
-```bash
-streamlit run src/frontend/streamlit_app.py
-```
-
-By default the frontend expects the backend at `http://localhost:8000`. The address can be overridden with the `BACKEND_URL` environment variable.
-
----
-
-## Engineering Decisions
-
-- **Separate frontend and backend:** Streamlit handles presentation while FastAPI exposes application capabilities as API routes.
-- **Live data + RAG:** structured macroeconomic indicators and unstructured report excerpts are combined rather than relying on a single context source.
-- **Explicit retrieval layer:** ChromaDB provides inspectable document retrieval before LLM synthesis.
-- **Environment-based secrets:** API keys are loaded from `.env` and never committed.
-- **Container-aware configuration:** the frontend backend URL is configurable through `BACKEND_URL`, allowing the same application code to run locally or inside Docker Compose.
-- **Health-aware startup:** the backend exposes `/health`, and Docker Compose uses it to gate frontend startup.
-- **Deterministic CI tests:** initial tests focus on logic and API behavior that can be verified without paid external calls.
-- **Build verification:** GitHub Actions builds the Docker image only after the pytest job succeeds.
-
----
-
-## Current Status
-
-The application now runs directly in Python or as a two-service Docker Compose stack and includes automated pytest verification plus a GitHub Actions CI pipeline.
-
-Completed engineering milestones:
-
-- Docker / Docker Compose packaging
-- backend health check
-- automated pytest suite
-- coverage reporting
-- GitHub Actions on pushes and pull requests
-- CI-gated Docker image build
-
-Next engineering priorities:
-
-- expand mocked backend and RAG test coverage
-- deployment configuration
-- structured logging and observability
-- production-facing reliability and security hardening
-
----
-
-## What This Project Demonstrates
-
-- End-to-end LLM application engineering
-- Retrieval-Augmented Generation over real documents
-- Integration of live external APIs with LLM workflows
-- FastAPI backend design
-- Vector retrieval with ChromaDB
-- Interactive Streamlit application development
-- Dockerized multi-service application packaging
-- Automated testing with pytest
-- GitHub Actions continuous integration
-- CI-gated Docker build verification
-- Environment-based service configuration
-- Structured separation between retrieval, reasoning, API, and presentation layers
-- Exportable stakeholder-facing outputs
-
----
-
-## Contact
-
-**Nicholai Gay**  
-AI Engineer — LLM Systems, RAG & AI Agents
-
-[LinkedIn](https://www.linkedin.com/in/nicholai-gay-201905148/) · [GitHub](https://github.com/QinnniQ)
+- [Engineering case study](docs/engineering-case-study.md)
+- [60–90 second demo script](docs/demo-script.md)
+- [CV and LinkedIn wording](docs/portfolio-copy.md)
+- [Versioned evaluation set](web/eval/questions.v1.json)
+- [Legacy offline analysis trace](docs/offline_trace.md)

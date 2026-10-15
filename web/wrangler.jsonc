@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "global-economic-intelligence-agent",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-10-15",
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "env": {
+    "preview": { "name": "global-economic-intelligence-preview" },
+    "production": { "name": "global-economic-intelligence" }
+  }
+}
