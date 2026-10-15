@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration](docs/overview.png)
 
-**Release status, 15 October 2026:** the web app builds and deterministic tests pass. The saved-data overview, comparison, analyst and PDF download were exercised in a browser. A live Netherlands analysis also retrieved annual World Bank observations and their provider-update date. It is **not deployed** to the owner's Cloudflare account: Wrangler reported no authenticated account on this machine. The deployed URL still needs a post-deploy smoke test.
+**Release status, 15 October 2026:** the app is deployed on Cloudflare at [global-economic-intelligence.nicholai-gay.workers.dev](https://global-economic-intelligence.nicholai-gay.workers.dev). The saved-data overview, comparison, source-linked analyst and PDF workflow were exercised in a browser. The Cloudflare preview and production Workers both served the app, and live Netherlands observations were retrieved through the deployed API. No custom domain or paid model service is configured.
 
 ## Visitor experience
 
@@ -72,9 +72,11 @@ This release has five countries and three indicators. Its report index is curate
 
 Measured locally on 15 October 2026: **14 web tests passed**, the TypeScript production build and production Worker dry run passed, and representative saved-demo and live-data one-page PDFs were rendered and visually inspected. Saved-demo browser flows were checked at desktop and mobile widths; a live Netherlands analyst answer returned annual World Bank data. No accuracy, latency or accessibility score is claimed.
 
+Post-deploy smoke checks confirmed the preview homepage, saved-data comparison and analyst views, live World Bank series and live analyst answer. The production homepage, saved-data analyst and live World Bank series were also checked. New `workers.dev` routes briefly returned Cloudflare error 1042 during propagation; subsequent checks succeeded.
+
 ## Cloudflare deployment
 
-[wrangler.jsonc](web/wrangler.jsonc) defines separate preview and production Worker names. No secret or paid service is required. From `web/`:
+[wrangler.jsonc](web/wrangler.jsonc) defines separate preview and production Worker names. The [preview](https://global-economic-intelligence-preview.nicholai-gay.workers.dev) and [production](https://global-economic-intelligence.nicholai-gay.workers.dev) deployments use distinct `workers.dev` URLs and leave existing Cloudflare sites and domains untouched. No secret or paid service is required. For a fresh checkout or redeployment, from `web/`:
 
 ```bash
 npx wrangler login
