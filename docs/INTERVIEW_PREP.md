@@ -46,6 +46,8 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 
 **Why no public LLM?** The current Worker has no configured model service, cost control or validated vector index. A model path without grounded evaluation would weaken the reliability of the demo.
 
+**Was the original agent RAG?** Yes, the local Python design extracts text from PDFs, chunks it, stores passages in Chroma, retrieves passages for a question, and supplies them to an OpenAI model for answer synthesis. That is distinct from the currently deployed Cloudflare demo, which uses curated retrieval and deterministic analysis. The local code instantiates `OpenAIEmbeddings` but does not pass it into Chroma, so the persisted collection's embedding configuration and retrieval quality still need validation.
+
 **Is the local Python prototype production ready?** No. It uses FastAPI, Chroma and OpenAI code, but it is separate from the public Worker and its stored embedding configuration is not verified. Some Python tests mock the model and retrieval, so they do not establish real quality.
 
 **What would you build next?** First measure and investigate the intermittent live provider timeouts across Worker regions, using request IDs and provider status while protecting question content. Then expand and license a small report corpus, rebuild a versioned vector index with explicit embedding configuration, and measure retrieval relevance and claim support before adding bounded server-side synthesis.
@@ -64,6 +66,6 @@ You may say the repository was developed or reviewed with AI assistance **only i
 
 - Lead with the user problem and the evidence trail, then explain React, the Worker, and the World Bank API. Do not start with the technology list.
 - Demo the saved path first. It gives you stable numbers and lets you show the source table, comparison, bounded analyst, report context, limitations, and PDF in three minutes. Use live mode as an optional second branch.
-- If asked “Where is the AI?”, explain the current public boundary plainly: deterministic analysis and curated retrieval. The Python/OpenAI/Chroma code is a separate local prototype, not a public RAG service. Explain the validation work needed before deploying synthesis.
+- If asked “Where is the AI?”, distinguish the two versions. The original local Python agent implements PDF retrieval plus OpenAI synthesis. The current public demo uses deterministic analysis and curated retrieval; it is not the hosted RAG service. Explain the validation work needed before deploying the Python synthesis path.
 - If asked “What did you personally do?”, describe only work you can personally substantiate. Separate decisions you made from implementation you reviewed or produced with AI assistance.
 - Ask the interviewer how their teams validate source quality and claim support in client-facing AI systems, and how they decide when a deterministic workflow should gain a model step. These connect this project's trade-offs to Xebia's stated emphasis on [trusted data foundations](https://nl.xebia.com/) and [engineering craftsmanship](https://xebia.com/careers/?filters=Netherlands).

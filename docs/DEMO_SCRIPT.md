@@ -16,6 +16,6 @@ On **production**, switch to **Live data** on Overview and inspect Netherlands G
 
 ## Useful follow-up questions
 
-- “Is this RAG?” — “The public app retrieves a small, reviewed report index and attaches relevant passages, but it is curated retrieval and deterministic analysis. It is not semantic vector RAG or an LLM-generated answer.”
+- “Is this RAG?” — “The original local Python agent is a PDF-based RAG pipeline: it extracts and chunks reports, retrieves passages from Chroma, and sends those passages with live indicator context to an OpenAI model. This deployed Cloudflare demo is a reliability-focused version: it uses curated report retrieval and deterministic analysis, without a public LLM call. I have not validated the stored Chroma index's embedding configuration end to end.”
 - “Where is the AI?” — “There is a separate local Python/OpenAI prototype. Its Chroma embedding configuration is unverified, so I did not present it as a public capability. Adding grounded model synthesis would be a next step after a versioned index and evaluation.”
 - “What fails safely?” — “Unsupported countries or topics are rejected, null observations are omitted, upstream failure is shown, and citations must resolve to supplied evidence IDs.”
