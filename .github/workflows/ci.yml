@@ -60,6 +60,15 @@ jobs:
       - name: Run tests with coverage
         run: pytest -q --cov=src --cov-report=term-missing
 
+      - name: Validate report manifest, PDFs and Chroma catalog
+        run: python scripts/generate_report_catalog.py --check
+
+      - name: Validate public page search against source PDFs
+        run: python scripts/build_report_search.py --check
+
+      - name: Recheck a stored 2026 vector against the configured model
+        run: python scripts/verify_chroma_vectors.py --store chroma_store --id ec_forecast_2026_chunk_0
+
   docker-build:
     name: Docker build
     runs-on: ubuntu-latest

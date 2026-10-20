@@ -56,14 +56,13 @@ def ingest_pdfs(folder_path="data/reports_pdfs", manifest_path=REPORT_MANIFEST):
         if report is None:
             raise ValueError(f"PDF is missing from report manifest: {pdf_path.name}")
         base_id = pdf_path.stem
+        file_hash = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
+        if file_hash != report["sha256"]:
+            raise ValueError(f"PDF checksum changed: {pdf_path.name}")
         first_id = collection.get(ids=[f"{base_id}_chunk_0"], include=[])["ids"]
         if report.get("legacy") and first_id:
             reports_skipped.append(base_id)
             continue
-
-        file_hash = hashlib.sha256(pdf_path.read_bytes()).hexdigest()
-        if file_hash != report["sha256"]:
-            raise ValueError(f"PDF checksum changed: {pdf_path.name}")
         reader = PdfReader(pdf_path)
         if len(reader.pages) != report["pages"]:
             raise ValueError(f"PDF page count changed: {pdf_path.name}")

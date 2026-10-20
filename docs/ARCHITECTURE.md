@@ -11,6 +11,8 @@ flowchart LR
   Worker -->|saved mode| Fixture[Versioned rounded snapshot]
   Worker -->|dated context| Reports[Reviewed passage index]
   Worker -->|six-hour local edge cache| Cache[(Cloudflare Cache API)]
+  Browser -->|page search| Lexical[Static PDF page term index]
+  Lexical -->|page link| Publisher[Official publisher PDF]
   Browser -->|displayed Analysis object| PDF[Browser PDF renderer]
   Python[Local Python prototype] --> Chroma[(Local Chroma artifact)]
   Python -. separate experimental path .-> OpenAI[OpenAI service if configured]
@@ -20,7 +22,9 @@ flowchart LR
 
 In live mode, the visitor selects a country and indicator. React calls `GET /api/series`. The Worker checks the allowed country, indicator and date window, checks its cache, then `web/worker/worldbank.ts` requests the official World Bank Indicators API. The adapter validates the response shape and pagination, excludes null or malformed observations, sorts by observation year and records the provider's `lastupdated` date when present. The Worker returns a typed `Series` containing source URL, unit, retrieval time and observations. React renders a chart and a numeric table. The table is the chart alternative.
 
-For `POST /api/analysis`, the Worker resolves the selected country and supported topics, retrieves the necessary series, then `web/worker/analysis.ts` computes findings and percentage-point changes in deterministic code. `web/worker/reports.ts` optionally attaches passages from a two-entry, manually reviewed index. The report text is contextual evidence and does not validate indicator values. The browser exports the **same displayed Analysis object** via `web/worker/pdf.ts`; export does not call the API again.
+For `POST /api/analysis`, the Worker resolves the selected country and supported topics, retrieves the necessary series independently, then `web/worker/analysis.ts` computes findings and percentage-point changes in deterministic code. If one series fails, successful series remain and the response names unavailable indicators. `web/worker/reports.ts` optionally attaches passages from a two-entry, manually reviewed index. The report text is contextual evidence and does not validate indicator values. The browser exports the **same displayed Analysis object** via `web/worker/pdf.ts`; export does not call the API again.
+
+Source library search is a browser-side lexical lookup against a generated static index of all verified PDF pages. The index contains term frequencies and page references. Results link to publisher PDFs. This path does not call Chroma or feed text into analyst answers.
 
 ## Responsibilities and trust boundaries
 
@@ -31,6 +35,7 @@ For `POST /api/analysis`, the Worker resolves the selected country and supported
 | Numerical calculations and findings | `web/src/domain.ts`, `web/worker/analysis.ts` | None |
 | Report ingestion | Manual review of `data/reports_pdfs/ecb.pdf` and `oecd.pdf`; metadata checked into `web/worker/reports.ts` | No runtime ingestion |
 | Report retrieval | `web/worker/reports.ts` | In-bundle geography, topic and term filter; **not semantic/vector search** |
+| PDF page navigation | `web/src/reportSearch.ts`, `web/public/report-search-index.v1.json` | Static lexical index and external publisher links |
 | Model synthesis | Not configured in the public Worker | No public model or embedding calls |
 | Caching | `web/worker/index.ts` | Cloudflare Cache API; six-hour TTL, data-centre local and disposable |
 | Presentation and PDF | `web/src/main.tsx`, `web/worker/pdf.ts` | Browser only |
@@ -45,6 +50,6 @@ The public app's configured model and embedding function are **none**. The local
 
 ## Operational scope
 
-Static assets and API deploy together over HTTPS. The Worker has no durable storage; the cache can be evicted and is local to a Cloudflare data centre. Errors return JSON and a request ID. `/api/health` checks only that the application handler runs; it does not call World Bank or a paid model. See [API contract](API.md), [decisions](ENGINEERING_DECISIONS.md), and [verification](VERIFICATION.md).
+Static assets and API deploy together over HTTPS. The Worker has no durable storage; the cache can be evicted and is local to a Cloudflare data centre. Errors return JSON and a request ID. `/api/health` checks only that the application handler runs; scheduled direct and external public probes check representative live series separately. Weekly jobs compare the dated fixture with World Bank and scan two accessible official report indexes. See [operations](OPERATIONS.md), [API contract](API.md), [decisions](ENGINEERING_DECISIONS.md), and [verification](VERIFICATION.md).
 
 The World Bank API query and pagination parameters follow its [official Indicators API documentation](https://datahelpdesk.worldbank.org/knowledgebase/articles/898581-api-basic-call-structures). Cloudflare documents the [Cache API's data-centre locality and TTL behavior](https://developers.cloudflare.com/workers/runtime-apis/cache/).

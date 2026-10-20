@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import { COUNTRIES, INDICATORS, INDICATOR_CODES, commonPeriod, type Analysis, type Country, type Indicator, type Series } from './domain';
 import { REPORT_SOURCES } from './reportCatalog';
+import { loadReportIndex, searchReports, type ReportHit, type SearchIndex } from './reportSearch';
+import { SNAPSHOT_DATE } from './demo';
 import './style.css';
 
 type View = 'overview' | 'compare' | 'analyst' | 'methodology' | 'sources';
@@ -59,6 +61,33 @@ function DataTable({ series, indicator }: { series: Series[]; indicator: Indicat
   </tbody></table></div>;
 }
 
+let reportIndexPromise: Promise<SearchIndex> | null = null;
+function ReportSearch() {
+  const [query, setQuery] = useState('');
+  const [hits, setHits] = useState<ReportHit[]>([]);
+  const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  async function run(value: string) {
+    const requested = value.trim();
+    if (requested.length < 2) return;
+    setSearched(false); setError(''); setLoading(true);
+    try {
+      reportIndexPromise ??= loadReportIndex().catch(failure => { reportIndexPromise = null; throw failure; });
+      setHits(searchReports(await reportIndexPromise, requested));
+      setSearched(true);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Report search is unavailable.'); }
+    finally { setLoading(false); }
+  }
+  return <section className="report-search panel" aria-label="Search report pages">
+    <div className="eyebrow">REPORT PAGE SEARCH</div><h2>Find a page in the source reports.</h2>
+    <p>Searches extracted terms across all 13 PDFs. Results link to publisher pages; read the original page before using it as evidence. This is lexical search, separate from the public analyst.</p>
+    <form onSubmit={event => { event.preventDefault(); void run(query); }}><label className="field" htmlFor="report-query"><span>Topic or phrase</span></label><div className="report-search-controls"><input id="report-query" value={query} onChange={event => setQuery(event.target.value)} placeholder="For example: France inflation" minLength={2} maxLength={120}/><button className="primary" type="submit" disabled={loading || query.trim().length < 2}>{loading ? 'Searching…' : 'Search reports →'}</button></div></form>
+    {error && <div className="state error" role="alert">{error}</div>}
+    {searched && <div className="report-results" role="status"><strong>{hits.length ? `Top ${hits.length} matching PDF pages` : 'No matching PDF pages'}</strong>{hits.length > 0 && <ol>{hits.map(hit => <li key={`${hit.reportId}-${hit.page}`}><span>{hit.publisher} · {hit.issue}</span><strong>{hit.title} · PDF page {hit.page}</strong><small>Matched terms: {hit.matchedTerms.join(', ')}</small><a href={hit.url} target="_blank" rel="noopener noreferrer">Open publisher PDF at page {hit.page} ↗</a></li>)}</ol>}</div>}
+  </section>;
+}
+
 function App() {
   const [view, setView] = useState<View>(initialView);
   const [mode, setMode] = useState<'demo' | 'live'>(initialMode);
@@ -112,7 +141,7 @@ function App() {
         {([['overview','Overview'],['compare','Compare'],['analyst','Ask the analyst'],['methodology','Methodology'],['sources','Source library']] as [View,string][]).map(([key,label],i) => <button key={key} className={`nav-item ${view === key ? 'active' : ''}`} onClick={() => setView(key)} aria-current={view === key ? 'page' : undefined}><span className="nav-index">0{i+1}</span>{label}<span className="nav-arrow">↗</span></button>)}
       </nav><div className="sidebar-bottom"><span className="dot"/> WORLD BANK DATA<br/><small>Annual observations · sourced</small></div>
     </aside><div className="main-area"><header className="topbar"><span>GLOBAL ECONOMIC INTELLIGENCE AGENT</span><span className="topbar-right">RESEARCH WORKSPACE <span className="topbar-rule"/> 2026</span></header>
-      <main id="main" tabIndex={-1}><div className="mode-bar" role="group" aria-label="Data mode"><span>{mode === 'demo' ? 'SAVED DEMONSTRATION · REVIEWED 15 OCT 2026 · ROUNDED VALUES' : 'LIVE WORLD BANK API · ANNUAL SERIES'}</span><div><button className={mode === 'demo' ? 'on' : ''} onClick={()=>setMode('demo')} aria-pressed={mode === 'demo'}>Saved demo</button><button className={mode === 'live' ? 'on' : ''} onClick={()=>setMode('live')} aria-pressed={mode === 'live'}>Live data</button></div></div>
+      <main id="main" tabIndex={-1}><div className="mode-bar" role="group" aria-label="Data mode"><span>{mode === 'demo' ? `SAVED DEMONSTRATION · REVIEWED ${new Date(SNAPSHOT_DATE).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).toUpperCase()} · ROUNDED VALUES` : 'LIVE WORLD BANK API · ANNUAL SERIES'}</span><div><button className={mode === 'demo' ? 'on' : ''} onClick={()=>setMode('demo')} aria-pressed={mode === 'demo'}>Saved demo</button><button className={mode === 'live' ? 'on' : ''} onClick={()=>setMode('live')} aria-pressed={mode === 'live'}>Live data</button></div></div>
         {view === 'overview' && <><section className="page-heading"><div className="eyebrow">01 / ECONOMIC OVERVIEW</div><h1>An economy, in context.</h1><p>Inspect a dated snapshot, or switch to live World Bank data for historical trends. Every observation keeps its year and source.</p></section>
           <div className="control-strip"><CountryPicker value={country} onChange={setCountry} label="Economy"/><div className="control-note">Five supported economies<br/><strong>Annual World Bank series</strong></div></div>
           {overviewLoading && <div className="state" role="status">{mode === 'demo' ? 'Loading saved observations…' : 'Retrieving World Bank observations…'}</div>}
@@ -138,17 +167,19 @@ function App() {
           {analysisError && <div className="state error" role="alert">{analysisError}</div>}
           {analysis && <article className="analysis"><div className="analysis-top"><div><div className="eyebrow">EVIDENCE-LED ASSESSMENT</div><h2>{COUNTRIES[analysis.country]} at a glance</h2><p>{analysis.question}</p></div><button className="primary secondary" onClick={exportPdf} disabled={exporting}>{exporting ? 'Preparing PDF…' : 'Export this briefing ↓'}</button></div>
             <div className="analysis-meta">Generated {date(analysis.generatedAt)} · {analysis.series.some(s=>s.stale) ? 'Saved demonstration' : 'Live annual observations'} · {analysis.mode === 'model' ? 'Model synthesis' : 'Deterministic analysis'}</div>
+            {!!analysis.unavailableIndicators?.length && <div className="state error" role="status">Partial live briefing: {analysis.unavailableIndicators.map(code => INDICATORS[code].short).join(', ')} could not be loaded. Findings below use only the available indicators.</div>}
             <div className="analysis-columns"><div><h3>Key findings</h3>{analysis.findings.length ? <ol className="findings">{analysis.findings.map((f,i)=><li key={i}>{f.text} <span>{f.evidenceIds.map(id=><a key={id} href={`#${id.replaceAll(':','-')}`}>[{id}]</a>)}</span></li>)}</ol> : <p>There is not enough observed data for a finding.</p>}
               <h3>Interpretation</h3>{analysis.interpretation.map((s,i)=><p key={i}>{s}</p>)}<h3>Risks</h3>{analysis.risks.map((s,i)=><p key={i}>{s}</p>)}</div><aside className="evidence-rail"><h3>Source evidence</h3>{analysis.evidence.map(e=><div className="evidence-item" id={e.id.replaceAll(':','-')} key={e.id}><strong>{e.label}</strong><span>{e.detail}</span>{e.passage && <blockquote>“{e.passage}”</blockquote>}<a href={e.url} target="_blank" rel="noreferrer">{e.kind === 'report' ? `Open report page ${e.page} ↗` : 'View World Bank series ↗'}</a></div>)}<div className="report-status"><strong>Report excerpts</strong><p>{analysis.reportStatus}</p></div></aside></div>
             <div className="limitations"><h3>Limits of this assessment</h3><ul>{analysis.limitations.map((s,i)=><li key={i}>{s}</li>)}</ul></div>
             <details className="raw-evidence"><summary>Inspect supporting observations</summary>{analysis.series.map(s=><DataTable key={s.indicator} series={[s]} indicator={s.indicator}/>)}</details>
           </article>}
         </>}
-        {view === 'methodology' && <><section className="page-heading"><div className="eyebrow">04 / METHODOLOGY</div><h1>What the evidence can say.</h1><p>A concise account of the sources, calculations, and deliberate limits of this release.</p></section><div className="method-grid"><section className="panel"><h2>Data</h2><p>Annual World Bank Indicators API observations for five countries. GDP growth and consumer-price inflation are annual percentage rates. Unemployment is the modeled ILO estimate, expressed as a percentage of the labor force.</p><p>The saved demonstration has rounded 2024 and 2025 values transcribed from official World Bank pages reviewed 15 October 2026. It has one observation per indicator and cannot establish a trend. Live mode retrieves full series. Missing observations are left blank.</p></section><section className="panel"><h2>Analysis</h2><p>Findings are calculated in application code. A change from one annual percentage value to another is reported in percentage points. No interpolation, forecast, causal explanation or personalized investment advice is generated.</p><p>The public analyst currently uses no paid model calls. Report excerpts appear only when verified passage metadata is available; this release does not claim report support where there is none.</p></section><section className="panel"><h2>Freshness and availability</h2><p>Live series are fetched through the Cloudflare Worker and cached for six hours. A failed upstream request is shown as an error. Retrieval date is separate from observation year.</p><p>Exports are rendered from the exact analysis object displayed in the browser. The PDF does not rerun retrieval or generation.</p></section></div></>}
+        {view === 'methodology' && <><section className="page-heading"><div className="eyebrow">04 / METHODOLOGY</div><h1>What the evidence can say.</h1><p>A concise account of the sources, calculations, and deliberate limits of this release.</p></section><div className="method-grid"><section className="panel"><h2>Data</h2><p>Annual World Bank Indicators API observations for five countries. GDP growth and consumer-price inflation are annual percentage rates. Unemployment is the modeled ILO estimate, expressed as a percentage of the labor force.</p><p>The saved demonstration has rounded 2024 and 2025 values transcribed from official World Bank pages reviewed {date(SNAPSHOT_DATE)}. It has one observation per indicator and cannot establish a trend. Live mode retrieves full series. Missing observations are left blank; forecast-status observations are excluded.</p></section><section className="panel"><h2>Analysis</h2><p>Findings are calculated in application code. A change from one annual percentage value to another is reported in percentage points. No interpolation, forecast, causal explanation or personalized investment advice is generated.</p><p>The public analyst currently uses no paid model calls. Report excerpts appear only when verified passage metadata is available; this release does not claim report support where there is none.</p></section><section className="panel"><h2>Freshness and availability</h2><p>Live series are fetched through the Cloudflare Worker and cached for six hours. If some series fail, available findings remain visible and the missing indicators are named. Retrieval date is separate from observation year.</p><p>Exports are rendered from the exact analysis object displayed in the browser. The PDF does not rerun retrieval or generation.</p></section></div></>}
         {view === 'sources' && <><section className="page-heading"><div className="eyebrow">05 / SOURCE LIBRARY</div><h1>Read the original reports.</h1><p>Open the publisher PDFs in the local Chroma retrieval corpus. File fingerprints and index counts make the source set inspectable.</p></section>
           <div className="source-summary"><strong>{REPORT_SOURCES.length} reports</strong><span>{REPORT_SOURCES.reduce((total, report) => total + report.chunks, 0).toLocaleString('en-GB')} indexed chunks in the local Python prototype</span></div>
+          <ReportSearch/>
           <div className="source-grid">{REPORT_SOURCES.map(report => <article className="source-card" key={report.id}><div className="source-card-top"><span>{report.publisher}</span><span>{report.issue}</span></div><h2>{report.title}</h2><p>{report.pages} PDF pages · {report.chunks.toLocaleString('en-GB')} stored chunks · index ID <code>{report.id}</code></p><div className="source-card-bottom"><a href={report.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${report.title} PDF from ${report.publisher} in a new tab`}>Open publisher PDF ↗</a><span>{report.publicPassage ? 'Public analyst: one curated passage' : 'Local prototype corpus'}</span></div><details><summary>Local file fingerprint</summary><code>SHA-256 {report.sha256}</code></details></article>)}</div>
-          <div className="source-caveat"><strong>How this relates to the public analyst</strong><p>The Python prototype indexes these reports in a local Chroma store. This website currently uses two manually reviewed 2025 report passages, one from the ECB and one from the OECD. The other reports are available to read here but are not searched by the public analyst. Publisher links open the full reports. The 2026 chunks retain page numbers; the original 2025 index did not.</p></div>
+          <div className="source-caveat"><strong>How this relates to the public analyst</strong><p>The Python prototype indexes these reports in a local Chroma store. The page search above is a separate lexical index across all 13 PDFs; it links to publisher PDF pages and does not generate answers. The public analyst uses only two manually reviewed 2025 passages, one from the ECB and one from the OECD. The 2026 Chroma chunks retain page numbers; the original 2025 chunks did not.</p></div>
         </>}
       </main><footer>GLOBAL ECONOMIC INTELLIGENCE AGENT <span>Source: World Bank Indicators API · <a href="https://data.worldbank.org" target="_blank" rel="noreferrer">data.worldbank.org ↗</a></span></footer>
     </div></div></>;

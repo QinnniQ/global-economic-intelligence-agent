@@ -35,7 +35,7 @@ The response shape is:
 }
 ```
 
-This exact example is `mode=demo`: the date is the saved review date, **not** a live retrieval. Live responses have `stale:false`, actual retrieval/provider dates, and `cacheStatus` of `network` or `cached`. `observations` can be empty. Null values are omitted and zero is preserved. The Worker retrieves all declared pages, up to 20, and rejects changing pagination metadata.
+This exact example is `mode=demo`: the date is the saved review date, **not** a live retrieval. Live responses have `stale:false`, actual retrieval/provider dates, and `cacheStatus` of `network` or `cached`. `observations` can be empty. Null and forecast-status values are omitted and zero is preserved. The Worker retrieves all declared pages, up to 20, and rejects changing pagination metadata.
 
 ## `POST /api/analysis`
 
@@ -45,7 +45,7 @@ JSON request:
 {"country":"NL","mode":"demo","question":"What are the latest GDP growth and inflation observations?"}
 ```
 
-`question` must be 8–500 trimmed characters; request body is capped at 1,500 characters. One selected country and supported topics are required. Country conflicts and unsupported aggregate or forecast questions return HTTP 400. The response is an `Analysis` object with `id`, `question`, `country`, `generatedAt`, `mode:"deterministic"`, `indicators`, validated `series`, `findings` (text and evidence IDs), `interpretation`, `risks`, `limitations`, `evidence` (indicator and optional report metadata), and `reportStatus`. The answer does not invoke a model. A report passage is included only if the curated index matches the question; its source URL, publication date, page, checksum and ingestion version are returned with it. Findings cite only known evidence IDs.
+`question` must be 8–500 trimmed characters; request body is capped at 1,500 characters. One selected country and supported topics are required. Country conflicts and unsupported aggregate or forecast questions return HTTP 400. The response is an `Analysis` object with `id`, `question`, `country`, `generatedAt`, `mode:"deterministic"`, `indicators`, validated `series`, `findings` (text and evidence IDs), `interpretation`, `risks`, `limitations`, `evidence` (indicator and optional report metadata), `reportStatus`, and optional `unavailableIndicators`. Live analysis retains successful series when another indicator fails, lists the missing indicator codes and adds a limitation. If none succeeds, it returns 503. The answer does not invoke a model. A report passage is included only if the curated index matches the question; its source URL, publication date, page, checksum and ingestion version are returned with it. Findings cite only known evidence IDs.
 
 Example finding from the saved fixture:
 

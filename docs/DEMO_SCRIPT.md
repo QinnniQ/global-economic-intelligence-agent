@@ -14,8 +14,14 @@
 
 On **production**, switch to **Live data** on Overview and inspect Netherlands GDP growth. In the 20 October 2026 review, production displayed 2025 growth **1.78%**, 2024 **1.07%**, the provider update **8 October 2026**, and a dated retrieval. Check the live values again before the interview: the World Bank has intermittently timed out. If one indicator fails, the others remain visible with an error naming the unavailable series. If live mode is incomplete, say: “The upstream provider is temporarily unavailable for part of this request. The app shows the available observations and labels the missing series. I’ll use the explicitly dated saved demonstration for a reliable walkthrough.” Use **Retry this request** or **Use saved demonstration**.
 
+## Source verification branch, about 30 seconds
+
+Open **Source library**, search **Netherlands inflation**, and open one result at the publisher PDF page. Say: “The page finder is a lexical index over all 13 source PDFs. It sends me to the source page so I can check context. The public analyst is a separate deterministic path with only two reviewed contextual passages; the local 9,317-vector Chroma and OpenAI prototype is not hosted here.” If a publisher PDF viewer ignores the `#page=` fragment, use the displayed PDF page number in its viewer.
+
+For reliability, say: “The Worker probes three representative World Bank series twice a day, and a separate GitHub monitor checks the public API. A weekly review compares the 15 dated demo values with World Bank and watches accessible official report indexes. Those checks open review issues; they never rewrite evidence automatically.”
+
 ## Useful follow-up questions
 
 - “Is this RAG?” — “The original local Python agent is a PDF-based RAG pipeline: it extracts and chunks reports, retrieves passages from Chroma, and sends those passages with live indicator context to an OpenAI model. This deployed Cloudflare demo uses curated report retrieval and deterministic analysis, without a public LLM call. The local Chroma store has 9,317 vectors from 13 reports, but the vector service is not deployed.”
-- “Where is the AI?” — “There is a separate local Python/OpenAI prototype. The public site exposes 13 source reports and two curated passages, but not model synthesis. Adding grounded synthesis would require retrieval and citation evaluation, plus page metadata for the seven legacy reports.”
+- “Where is the AI?” — “There is a separate local Python/OpenAI prototype. The public site offers page search across 13 source PDFs and two curated analyst passages, but no model synthesis. Adding grounded synthesis would require retrieval and citation evaluation, plus verified page metadata for the seven legacy reports.”
 - “What fails safely?” — “Unsupported countries or topics are rejected, null observations are omitted, upstream failure is shown, and citations must resolve to supplied evidence IDs.”

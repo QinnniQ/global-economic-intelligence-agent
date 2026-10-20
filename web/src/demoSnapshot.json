@@ -1,0 +1,14 @@
+{
+  "reviewedAt": "2026-10-15T00:00:00.000Z",
+  "sources": [
+    "https://data.worldbank.org/?locations=BE-NL-LU-DE-FR-IT",
+    "https://data.worldbank.org/?locations=GB-DE-US-FR"
+  ],
+  "values": {
+    "NL": { "NY.GDP.MKTP.KD.ZG": { "year": 2024, "value": 1.1 }, "FP.CPI.TOTL.ZG": { "year": 2024, "value": 3.3 }, "SL.UEM.TOTL.ZS": { "year": 2025, "value": 3.9 } },
+    "DE": { "NY.GDP.MKTP.KD.ZG": { "year": 2024, "value": -0.5 }, "FP.CPI.TOTL.ZG": { "year": 2024, "value": 2.3 }, "SL.UEM.TOTL.ZS": { "year": 2025, "value": 3.7 } },
+    "FR": { "NY.GDP.MKTP.KD.ZG": { "year": 2024, "value": 1.2 }, "FP.CPI.TOTL.ZG": { "year": 2024, "value": 2.0 }, "SL.UEM.TOTL.ZS": { "year": 2025, "value": 7.5 } },
+    "GB": { "NY.GDP.MKTP.KD.ZG": { "year": 2024, "value": 1.1 }, "FP.CPI.TOTL.ZG": { "year": 2024, "value": 3.3 }, "SL.UEM.TOTL.ZS": { "year": 2025, "value": 4.7 } },
+    "US": { "NY.GDP.MKTP.KD.ZG": { "year": 2024, "value": 2.8 }, "FP.CPI.TOTL.ZG": { "year": 2024, "value": 2.9 }, "SL.UEM.TOTL.ZS": { "year": 2025, "value": 4.2 } }
+  }
+}

@@ -1,0 +1,4 @@
+[
+  {"id":"ec_forecast","url":"https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/economic-forecasts_en","link_pattern":"forecast"},
+  {"id":"ecb_bulletin","url":"https://www.ecb.europa.eu/press/economic-bulletin/html/index.eu.html","link_pattern":"economic-bulletin|eb20"}
+]

@@ -1,8 +1,9 @@
 import { COUNTRIES, INDICATORS, detectIndicators, isCountry, isIndicator, resolveCountry, type Country, type Indicator, type Series } from '../src/domain';
 import { analyse } from './analysis';
 import { fetchSeries, UpstreamError } from './worldbank';
-import { demoSeries } from '../src/demo';
+import { demoSeries, SNAPSHOT_DATE } from '../src/demo';
 import { buildAnalysis } from './analysis';
+import { probeWorldBank } from './probe';
 
 interface Env { ASSETS: Fetcher; }
 const json = (data: unknown, status = 200, id?: string) => Response.json(data, { status, headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...(id ? { 'x-request-id': id } : {}) } });
@@ -31,6 +32,12 @@ async function loadLiveSeries(country: Country, indicator: Indicator, start: num
 }
 
 export default {
+  async scheduled(controller: ScheduledController): Promise<void> {
+    const results = await probeWorldBank();
+    const failures = results.filter(result => !result.ok);
+    console.log(JSON.stringify({ event: 'world_bank_probe', scheduledTime: controller.scheduledTime, results }));
+    if (failures.length) throw new Error(`World Bank probe failed for ${failures.length} of ${results.length} representative series`);
+  },
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
@@ -64,7 +71,7 @@ export default {
           const codes = detectIndicators(question);
           if (!codes.length) return problem('This release supports GDP growth, consumer-price inflation, and unemployment. Try a question about one of those indicators.', 400, requestId);
           const analysis = buildAnalysis(question, resolved, codes.map(code => demoSeries(resolved, code)));
-          analysis.limitations.unshift('Saved demonstration: values are rounded to one decimal and have one observation per indicator. Source pages were reviewed on 15 October 2026.');
+          analysis.limitations.unshift(`Saved demonstration: values are rounded to one decimal and have one observation per indicator. Source pages were reviewed on ${new Date(SNAPSHOT_DATE).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}.`);
           return json(analysis, 200, requestId);
         }
         return json(await analyse(question, country, (code, indicator, start, end) => loadLiveSeries(code, indicator, start, end, url.origin, ctx)), 200, requestId);

@@ -1,0 +1,19 @@
+{
+  "ec_forecast": {
+    "index": "https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/economic-forecasts_en",
+    "links": [
+      "https://economy-finance.ec.europa.eu/economic-forecast-and-surveys/economic-forecasts/spring-2026-economic-forecast-slowdown-growth-energy-shock-drives-inflation_en"
+    ]
+  },
+  "ecb_bulletin": {
+    "index": "https://www.ecb.europa.eu/press/economic-bulletin/html/index.eu.html",
+    "links": [
+      "https://www.ecb.europa.eu/press/economic-bulletin/html/eb202602.en.html",
+      "https://www.ecb.europa.eu/press/economic-bulletin/html/eb202603.en.html",
+      "https://www.ecb.europa.eu/press/economic-bulletin/html/eb202604.en.html",
+      "https://www.ecb.europa.eu/press/economic-bulletin/html/eb202605.en.html",
+      "https://www.ecb.europa.eu/press/economic-bulletin/html/eb202606.en.html",
+      "https://www.ecb.europa.eu/pub/pdf/ecbu/eb202606.en.pdf"
+    ]
+  }
+}

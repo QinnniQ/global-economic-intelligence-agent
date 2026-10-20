@@ -1,5 +1,9 @@
 .git
 .github
+tmp
+web/node_modules
+web/dist
+web/.wrangler
 .env
 .venv
 venv

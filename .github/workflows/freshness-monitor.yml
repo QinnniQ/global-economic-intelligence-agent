@@ -1,0 +1,59 @@
+name: Data and report freshness
+
+on:
+  schedule:
+    - cron: '45 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Compare dated fixture with World Bank
+        run: python scripts/check_data_freshness.py
+      - name: Open or update review issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONITOR_TITLE: '[Monitor] Saved data needs review'
+          MONITOR_DESCRIPTION: 'The dated fixture is older than 30 days, World Bank revised a saved observation, or the check could not complete. Review the candidate before updating the public fixture.'
+        run: node scripts/monitor_issue.mjs failure
+      - name: Close recovered issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONITOR_TITLE: '[Monitor] Saved data needs review'
+        run: node scripts/monitor_issue.mjs success
+
+  reports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Check accessible official report indexes
+        run: python scripts/check_report_freshness.py --check
+      - name: Open or update review issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONITOR_TITLE: '[Monitor] New report links need review'
+          MONITOR_DESCRIPTION: 'An official report index changed or could not be checked. Review the publisher edition and licensing before changing the manifest or public catalog.'
+        run: node scripts/monitor_issue.mjs failure
+      - name: Close recovered issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MONITOR_TITLE: '[Monitor] New report links need review'
+        run: node scripts/monitor_issue.mjs success

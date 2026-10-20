@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. Production version: `adc895ad-4797-4bbf-a3f1-a0c26de0e80f`; preview version: `a27e7ef2-c436-4cc4-9f1f-2cc62a3a492d`. See [verification](docs/VERIFICATION.md) for the exact scope of each check. No paid model service is configured.
+**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. The site now includes page search, partial live analysis and freshness monitoring; see [verification](docs/VERIFICATION.md) for deployment and test details. No paid model service is configured.
 
 ## Visitor experience
 
@@ -14,10 +14,14 @@ An economic research workspace that asks: **What is happening in this economy, w
 - Use a clearly labelled saved demonstration without any credentials. Live mode retrieves full annual World Bank series.
 - Compare two to four countries across a chosen indicator and date window, with an aligned chart, table, common observation year and shareable URL.
 - Ask a single-country question and inspect source-linked findings, relevant page-linked report passages and explicit limitations.
-- Open all 13 reports from the Source library, with publisher PDF links, local file fingerprints and index counts.
+- Search pages across all 13 source PDFs, then open a matching page at the publisher. The library also shows file fingerprints and index counts.
 - Export the **displayed** analysis as a PDF in the browser. Export never reruns retrieval or analysis.
 
 The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors use Chroma's explicit local default embedding function. The six 2026 editions have per-chunk PDF page metadata; the seven original editions retain their legacy chunks without pages.
+
+The Source library's page search is a separate lexical index with page links. It publishes term frequencies and page references, not extracted full text, and does not change analyst answers.
+
+Reliability checks are described in [operations](docs/OPERATIONS.md): partial live findings label missing indicators; a scheduled Worker probe and external public monitor test representative series; weekly checks flag saved-value revisions and new official report links for review. The checks do not publish revised values or reports automatically.
 
 ## Run and verify
 
@@ -57,7 +61,7 @@ The Worker accepts only five country codes and three indicator IDs. Live request
 
 [Indicator definitions and units](web/src/domain.ts) distinguish GDP growth from GDP level and inflation from the CPI level. Changes between annual rates are reported in **percentage points**. Observation year is separate from retrieval date. The latest year may differ by country or indicator.
 
-The [saved demonstration](web/src/demo.ts) contains World Bank values rounded to one decimal: 2024 GDP growth and inflation, and 2025 modeled unemployment. They were transcribed from official [Netherlands/Germany/France](https://data.worldbank.org/?locations=BE-NL-LU-DE-FR-IT) and [United Kingdom/Germany/United States/France](https://data.worldbank.org/?locations=GB-DE-US-FR) pages reviewed on 15 October 2026. The provider may revise those pages. The saved demo has **one observation per series** and cannot establish a trend.
+The [saved demonstration](web/src/demoSnapshot.json) contains World Bank values rounded to one decimal: 2024 GDP growth and inflation, and 2025 modeled unemployment. They were transcribed from official [Netherlands/Germany/France](https://data.worldbank.org/?locations=BE-NL-LU-DE-FR-IT) and [United Kingdom/Germany/United States/France](https://data.worldbank.org/?locations=GB-DE-US-FR) pages reviewed on 15 October 2026. The provider may revise those pages. The saved demo has **one observation per series** and cannot establish a trend.
 
 The hosted [report index](web/worker/reports.ts) has two short passages reviewed against repository PDFs: ECB *Economic Bulletin* Issue 7 / 2025, page 11, and OECD *Interim Economic Outlook* September 2025, page 13. Stable passage IDs, title, publisher, official link, publication date, page, checksum and ingestion version are recorded. Retrieval requires matching geography and topic. Report excerpts are dated context, not validation of World Bank values. Numerical findings cite only the series used, and citation IDs are checked in code. Missing relevant passages are disclosed.
 
@@ -65,13 +69,15 @@ The hosted [report index](web/worker/reports.ts) has two short passages reviewed
 
 The public app stores no prompts or PDFs. It has no client-side credentials, paid inference, public ingestion or file upload. React renders external text safely. API inputs are bounded. A small per-isolate request guard reduces rapid repeated calls; it is **not** a global rate limit. Configure an account-level Cloudflare rate limiting rule for `/api/*` before high-traffic promotion. Structured failure logs contain request ID, route, status and error type, not question text.
 
-This release has five countries and three indicators. Its report index is curated rather than a general search corpus. It does not support EU or euro-area aggregates, multi-country analyst questions, forecasts or live LLM synthesis. Annual series and report dates can lag economic events. The PDF uses standard Helvetica and ASCII-normalised text for portability.
+This release has five countries and three indicators. Its analyst report index is curated; the separate page search provides lexical navigation across the 13 PDFs. It does not support EU or euro-area aggregates, multi-country analyst questions, forecasts or live LLM synthesis. Annual series and report dates can lag economic events. The PDF uses standard Helvetica and ASCII-normalised text for portability.
 
 ## Evaluation
 
 `web/tests/product.test.ts` covers country aliases and ambiguity, null and zero values, pagination and drift, mixed years, percentage-point changes, upstream failure, report relevance and malicious input, citation IDs, health, API errors, and concurrent isolated PDFs. The [ten-question evaluation set](web/eval/questions.v1.json) defines evidence expectations and a human assessment rubric. Automated checks assess structure and arithmetic; human review is required for claim support and interpretation.
 
 Checked locally on 20 October 2026: **18 web tests passed** and the TypeScript/Vite production build passed. `python -m pytest` could not run because this environment lacks `pytest`. No accuracy, latency or accessibility score is claimed. See the [verification record](docs/VERIFICATION.md) for real versus mocked checks.
+
+The 20 October reliability and page-search update passed **23 web tests** and a production build. Its separate 30-case page-search set verifies report discoverability and unrelated-query abstention, not claim accuracy. Preview browser checks and deployment details are in [verification](docs/VERIFICATION.md).
 
 After the preview deployment, browser checks confirmed `/api/health`, saved analysis and three-country comparison, live Netherlands series and analyst answer, and a PDF download. A 390×844 mobile viewport showed usable comparison controls and a readable saved briefing. After approved production deployment, the custom domain's health, saved analyst, live overview and live analyst were checked successfully. An earlier production live request had failed; the live branch should be rechecked immediately before an interview demo.
 

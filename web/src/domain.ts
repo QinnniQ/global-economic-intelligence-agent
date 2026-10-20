@@ -23,6 +23,7 @@ export type Analysis = {
   id: string; question: string; country: Country; generatedAt: string; mode: 'deterministic' | 'model';
   indicators: Indicator[]; series: Series[]; findings: Finding[]; interpretation: string[];
   risks: string[]; limitations: string[]; evidence: Evidence[]; reportStatus: string;
+  unavailableIndicators?: Indicator[];
 };
 
 export function isCountry(value: string): value is Country { return Object.hasOwn(COUNTRIES, value); }

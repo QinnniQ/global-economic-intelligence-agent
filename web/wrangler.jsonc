@@ -9,6 +9,8 @@
     "production": {
       "name": "global-economic-intelligence",
       "workers_dev": true,
+      "triggers": { "crons": ["15 6,18 * * *"] },
+      "observability": { "enabled": true },
       "routes": [{ "pattern": "econ.nickcloud.dev", "custom_domain": true }]
     }
   }

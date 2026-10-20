@@ -1,6 +1,6 @@
 import { COUNTRIES, INDICATORS, type Country, type Indicator, type Observation, type Series } from '../src/domain';
 
-export class UpstreamError extends Error { constructor(message: string, public status = 502) { super(message); } }
+export class UpstreamError extends Error { constructor(message: string, public status = 502) { super(message); this.name = 'UpstreamError'; } }
 
 export function parseWorldBank(payload: unknown, country: Country, indicator: Indicator, start: number, end: number, retrievedAt: string): Series {
   if (!Array.isArray(payload) || payload.length !== 2 || !payload[0] || typeof payload[0] !== 'object' || !Array.isArray(payload[1])) {
@@ -16,6 +16,8 @@ export function parseWorldBank(payload: unknown, country: Country, indicator: In
   for (const row of payload[1]) {
     if (!row || typeof row !== 'object') continue;
     const r = row as Record<string, unknown>;
+    // World Bank's F observation status marks a forecast, not a measured annual observation.
+    if (typeof r.obs_status === 'string' && r.obs_status.trim().toUpperCase() === 'F') continue;
     const year = Number(r.date);
     if (!Number.isInteger(year) || year < start || year > end || typeof r.value !== 'number') continue;
     const value = r.value;

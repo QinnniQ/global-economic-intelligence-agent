@@ -1,5 +1,5 @@
 import { COUNTRIES, INDICATORS, changeInPoints, detectIndicators, resolveCountry, type Analysis, type Country, type Evidence, type Finding, type Series } from '../src/domain';
-import { fetchSeries } from './worldbank';
+import { fetchSeries, UpstreamError } from './worldbank';
 import { retrieveReports, validateEvidenceIds } from './reports';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 1 }).format(n);
@@ -45,6 +45,14 @@ export async function analyse(question: string, selected: Country, getSeries = f
   const country = resolveCountry(question, selected);
   const indicators = detectIndicators(question);
   if (!indicators.length) throw new Error('This release supports GDP growth, consumer-price inflation, and unemployment. Try a question about one of those indicators.');
-  const results = await Promise.all(indicators.map(indicator => getSeries(country, indicator, 2000, new Date().getUTCFullYear())));
-  return buildAnalysis(question, country, results);
+  const results = await Promise.allSettled(indicators.map(indicator => getSeries(country, indicator, 2000, new Date().getUTCFullYear())));
+  const available = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+  if (!available.length) throw new UpstreamError('World Bank could not provide any requested indicator. Try again shortly.', 503);
+  const analysis = buildAnalysis(question, country, available);
+  const unavailable = indicators.filter((_, index) => results[index].status === 'rejected');
+  if (unavailable.length) {
+    analysis.unavailableIndicators = unavailable;
+    analysis.limitations.unshift(`Live data could not be retrieved for ${unavailable.map(code => INDICATORS[code].short).join(', ')}. This briefing uses only the available indicators; retry for a complete picture.`);
+  }
+  return analysis;
 }

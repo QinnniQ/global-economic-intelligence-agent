@@ -1,13 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PDFDocument } from 'pdf-lib';
-import { changeInPoints, commonPeriod, detectIndicators, parseCountries, resolveCountry } from '../src/domain';
+import { changeInPoints, commonPeriod, detectIndicators, parseCountries, resolveCountry, type Country, type Indicator } from '../src/domain';
 import { demoSeries } from '../src/demo';
-import { buildAnalysis } from '../worker/analysis';
+import { analyse, buildAnalysis } from '../worker/analysis';
 import { renderBriefing } from '../worker/pdf';
 import { retrieveReports, validateEvidenceIds } from '../worker/reports';
 import { fetchSeries, parseWorldBank, UpstreamError } from '../worker/worldbank';
+import { probeWorldBank } from '../worker/probe';
 import worker from '../worker/index';
 import evaluation from '../eval/questions.v1.json';
+import reportEvaluation from '../eval/report-search.v1.json';
+import { readFileSync } from 'node:fs';
+import { searchReports, type SearchIndex } from '../src/reportSearch';
+import { REPORT_SOURCES } from '../src/reportCatalog';
 
 describe('country and question handling', () => {
   it('matches words, not substrings, and keeps the selection authoritative', () => {
@@ -34,6 +39,13 @@ describe('World Bank data integrity', () => {
     const s = parseWorldBank([{pages:1,lastupdated:'2026-10-01'}, [row('2025',null),row('2024',1.2),row('2023',0),row('2022',NaN),row('2021','' as unknown as number)]], 'NL', 'NY.GDP.MKTP.KD.ZG', 2020, 2025, '2026-10-15T00:00:00Z');
     expect(s.observations).toEqual([{year:2024,value:1.2},{year:2023,value:0}]);
     expect(s.providerUpdatedAt).toBe('2026-10-01');
+  });
+  it('does not treat World Bank forecast rows as observed data', () => {
+    const s = parseWorldBank([{pages:1}, [
+      {date:'2026',value:2.3,obs_status:'F'},
+      {date:'2025',value:1.7,obs_status:''},
+    ]], 'NL', 'NY.GDP.MKTP.KD.ZG', 2020, 2026, '2026-10-20T00:00:00Z');
+    expect(s.observations).toEqual([{year:2025,value:1.7}]);
   });
   it('fetches all pages in the requested window', async () => {
     const fetcher = vi.fn(async (url: URL | RequestInfo) => new Response(JSON.stringify([{pages:2}, [row(String(url).includes('page=2') ? '2023' : '2024', 2)]]), {status:200}));
@@ -62,10 +74,32 @@ describe('World Bank data integrity', () => {
     expect(commonPeriod([nl,de])).toBe(2024);
     expect(commonPeriod([nl,demoSeries('DE','SL.UEM.TOTL.ZS')])).toBeNull();
   });
+  it('probes representative countries and flags a failed upstream series', async () => {
+    const result = await probeWorldBank(async (country, indicator) => {
+      if (country === 'US') throw new UpstreamError('timeout', 503);
+      return { ...demoSeries(country, indicator), stale: false };
+    }, new Date('2026-10-20T00:00:00Z'));
+    expect(result).toHaveLength(3);
+    expect(result.map(item => item.ok)).toEqual([true, false, true]);
+    expect(result[0].latestYear).toBe(2024);
+    expect(result[1].errorType).toBe('UpstreamError');
+  });
 });
 
 describe('analysis and briefing', () => {
   const analysis = buildAnalysis('What do the latest indicators show?', 'NL', [demoSeries('NL','NY.GDP.MKTP.KD.ZG'),demoSeries('NL','FP.CPI.TOTL.ZG')], '2026-10-15T10:00:00Z');
+  it('keeps successful live indicators when another provider request fails', async () => {
+    const getSeries = vi.fn(async (_country: Country, code: Indicator) => {
+      if (code === 'FP.CPI.TOTL.ZG') throw new UpstreamError('provider timed out', 503);
+      return { ...demoSeries('NL', code), stale: false };
+    });
+    const answer = await analyse('What do the latest available indicators show?', 'NL', getSeries);
+    expect(answer.unavailableIndicators).toEqual(['FP.CPI.TOTL.ZG']);
+    expect(answer.series.map(series => series.indicator)).toEqual(['NY.GDP.MKTP.KD.ZG', 'SL.UEM.TOTL.ZS']);
+    expect(answer.limitations[0]).toMatch(/Inflation.*could not be retrieved|could not be retrieved.*Inflation/);
+    expect(answer.findings.every(f => f.evidenceIds.every(id => answer.evidence.some(e => e.id === id)))).toBe(true);
+    await expect(analyse('What do the latest available indicators show?', 'NL', async () => { throw new UpstreamError('down', 503); })).rejects.toThrow(/could not provide any requested indicator/);
+  });
   it('uses only real series IDs and discloses absent report evidence', () => {
     const ids = new Set(analysis.evidence.map(e=>e.id));
     expect(analysis.findings.every(f=>f.evidenceIds.every(id=>ids.has(id)))).toBe(true);
@@ -162,6 +196,33 @@ describe('versioned question evaluation fixtures', () => {
       expect(answer.evidence.filter(e => e.kind === 'report').map(e => e.id), item.id).toEqual(item.expectedReportIds);
       expect(answer.findings.every(f => validateEvidenceIds(f.evidenceIds, answer.evidence)), item.id).toBe(true);
       expect(answer.findings.every(f => !f.text.includes('percentage points')), item.id).toBe(true);
+    }
+  });
+});
+
+describe('public report page search', () => {
+  const index = JSON.parse(readFileSync(new URL('../public/report-search-index.v1.json', import.meta.url), 'utf-8')) as SearchIndex;
+  it('links every indexed report to verified publisher pages and hashes', () => {
+    expect(index.version).toBe(1);
+    expect(index.reports).toHaveLength(REPORT_SOURCES.length);
+    for (const source of REPORT_SOURCES) {
+      const entry = index.reports.find(report => report.id === source.id);
+      expect(entry?.url, source.id).toBe(source.url);
+      expect(entry?.sha256, source.id).toBe(source.sha256);
+    }
+    for (const [reportIndex, page] of index.pages) {
+      const source = REPORT_SOURCES.find(report => report.id === index.reports[reportIndex].id);
+      expect(page).toBeGreaterThan(0);
+      expect(page).toBeLessThanOrEqual(source!.pages);
+    }
+  });
+  it('finds the reviewed source within five results and abstains on unrelated terms', () => {
+    expect(reportEvaluation.cases).toHaveLength(30);
+    for (const item of reportEvaluation.cases) {
+      const hits = searchReports(index, item.query, 5);
+      if (item.expectedReport) expect(hits.some(hit => hit.reportId === item.expectedReport), item.query).toBe(true);
+      else expect(hits, item.query).toEqual([]);
+      expect(hits.every(hit => hit.url.endsWith(`#page=${hit.page}`)), item.query).toBe(true);
     }
   });
 });

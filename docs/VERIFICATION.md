@@ -1,5 +1,13 @@
 # Verification record — 20 October 2026
 
+## Reliability and report page search, 20 October 2026
+
+The Source library now has a separate static lexical page index over all 13 checked PDFs. Its generated artifact contains term frequencies and PDF page references, not report text. `scripts/generate_report_catalog.py --check` matched all manifest hashes, page counts and 9,317 local Chroma records. `scripts/build_report_search.py --check` reproduced the 3,046,297-byte public index exactly with pypdf 6.10.0. The generated catalog and index are checked in CI. A 30-case search set covers two source queries for each edition and four unrelated queries. The web suite passed **23 tests**, and the TypeScript/Vite production build succeeded. Local Python pytest could not run because pytest is absent from the bundled runtime; GitHub CI runs it on Python 3.11.
+
+The dated saved fixture was checked against 15 World Bank same-year API observations on 20 October: no values differed beyond the 0.051 threshold, and it was five days old. The publisher watch baseline contained seven existing links from the two accessible official indexes; its first check found no new links. Four other publisher catalogs returned HTTP 403 to ordinary scripted requests, so they remain manual checks. The checks never change the public fixture or report manifest without review.
+
+Preview Worker version `3c924cb3-cad5-4341-a327-1e702e16b40d` deployed successfully. The browser showed 13 Source library cards and 9,317 local chunks. Searching “Netherlands inflation” returned page-level hits, and the European Commission result opened the official Spring 2026 PDF in its browser viewer at PDF page 138 of 246. Live Netherlands Overview showed 2025 GDP growth 1.78%, inflation 3.2% and modeled unemployment 3.87%; the live analyst produced source-linked findings and percentage-point changes. The external probe against preview returned healthy app and representative NL GDP, US inflation and UK unemployment responses. These point-in-time observations do not establish continuous World Bank availability. The partial-failure branch is covered by mocked tests; a real provider failure was not forced.
+
 ## Repository and deployment state
 
 At inspection the checkout was on `main`, tracking `origin/main`, at `e3665dd` (“Attach economic intelligence custom domain”), with no existing user changes. The new code was deployed to the existing **preview** Worker as version `32fca619-fef7-45de-8056-f2bb49c54301`, then to the existing **production** Worker after user approval as version `ee986b90-75b6-4835-a574-cb714e50486a`. The public URLs in `web/wrangler.jsonc` were preserved. No paid service was enabled.

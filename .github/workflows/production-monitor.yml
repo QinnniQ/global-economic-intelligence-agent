@@ -1,0 +1,32 @@
+name: Production monitor
+
+on:
+  schedule:
+    - cron: '30 6,18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+      - name: Check production app and representative live series
+        run: node scripts/monitor_production.mjs
+      - name: Open or update a failure issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/monitor_issue.mjs failure
+      - name: Close a recovered failure issue
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/monitor_issue.mjs success
