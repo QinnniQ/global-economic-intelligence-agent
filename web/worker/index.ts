@@ -72,7 +72,7 @@ export default {
       return problem('Not found.', 404, requestId);
     } catch (error) {
       const status = error instanceof UpstreamError ? error.status : error instanceof Error && /Select|handles one country|outside this release|names |between 8|This release supports/.test(error.message) ? 400 : 503;
-      const message = error instanceof Error && status !== 503 ? error.message : 'The service could not complete this request. Try again shortly.';
+      const message = error instanceof UpstreamError || error instanceof Error && status === 400 ? error.message : 'The service could not complete this request. Try again shortly.';
       console.error(JSON.stringify({ requestId, path: url.pathname, status, errorType: error instanceof Error ? error.name : 'Unknown' }));
       return problem(message, status, requestId);
     }
