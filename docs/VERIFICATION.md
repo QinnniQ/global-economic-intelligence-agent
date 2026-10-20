@@ -12,7 +12,8 @@ At inspection the checkout was on `main`, tracking `origin/main`, at `e3665dd` (
 | `npm run build` in `web/` after UI/API edits | **Passed** | TypeScript and Vite built Worker and client. Vite warned that the main and PDF chunks exceed 500 kB; this is a performance follow-up, not a build failure. |
 | Ten-question `web/eval/questions.v1.json` set, executed by a Vitest case | **10 fixture cases matched** expected indicator/report IDs or expected rejection | Saved-data deterministic behavior only. No model output or live data quality score. |
 | SHA-256 on `data/reports_pdfs/ecb.pdf` and `oecd.pdf` | **Matched** the hashes in `web/worker/reports.ts` | The bundled PDF files match the indexed checksums. It does not establish licensing or that every report claim is true. |
-| `python -m pytest -q` | **Not run: `pytest` missing** in the available Python 3.14 environment | Python prototype tests remain unverified in this session. They mock model/retrieval behavior. |
+| `python -m pytest -q` locally | **Not run: `pytest` missing** in the available Python 3.14 environment | CI runs the Python suite on Python 3.11; the tests mock model/retrieval behavior. |
+| [GitHub Actions run 39418992213](https://github.com/QinnniQ/global-economic-intelligence-agent/actions/runs/39418992213) for commit `2ed393c` | **Passed:** web tests/build, Python 3.11 pytest/coverage, Docker image build | CI verifies the checked-in release on Ubuntu; Python tests use stubs and do not establish real model quality. |
 
 ## Browser and external-service observations
 
