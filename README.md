@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 20 October 2026:** the updated application is deployed at [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources). Production version: `e2069b89-d01a-4779-a591-a315256ef698`; preview version: `b8e02e8b-c803-42c3-979c-94395032e5b4`. The new Source library was inspected on both domains, and all seven publisher PDF links appeared in the production page. Earlier browser checks covered health, saved analysis, live Netherlands observations, comparison, mobile layout and PDF export. Provider availability should be rechecked before a demo. No paid model service is configured. See [verification](docs/VERIFICATION.md) for the exact scope of each check.
+**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. Production version: `adc895ad-4797-4bbf-a3f1-a0c26de0e80f`; preview version: `a27e7ef2-c436-4cc4-9f1f-2cc62a3a492d`. See [verification](docs/VERIFICATION.md) for the exact scope of each check. No paid model service is configured.
 
 ## Visitor experience
 
@@ -14,10 +14,10 @@ An economic research workspace that asks: **What is happening in this economy, w
 - Use a clearly labelled saved demonstration without any credentials. Live mode retrieves full annual World Bank series.
 - Compare two to four countries across a chosen indicator and date window, with an aligned chart, table, common observation year and shareable URL.
 - Ask a single-country question and inspect source-linked findings, relevant page-linked report passages and explicit limitations.
-- Open all seven reports from the Source library, with publisher PDF links, local file fingerprints and original index counts.
+- Open all 13 reports from the Source library, with publisher PDF links, local file fingerprints and index counts.
 - Export the **displayed** analysis as a PDF in the browser. Export never reruns retrieval or analysis.
 
-The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors have been checked against Chroma's local default embedding function; the index does not retain per-chunk PDF page metadata.
+The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors use Chroma's explicit local default embedding function. The six 2026 editions have per-chunk PDF page metadata; the seven original editions retain their legacy chunks without pages.
 
 ## Run and verify
 
@@ -35,7 +35,7 @@ npm test
 npm run build
 ```
 
-The legacy Python prototype can still be started with `docker compose up --build` after copying `.env.example` to `.env` and supplying an `OPENAI_API_KEY`. It is experimental and may incur model charges if used. Ingestion is disabled unless `INGEST_ADMIN_TOKEN` is set, and Compose binds the legacy services to localhost. Its raw model endpoints must **not** be exposed publicly. The existing `chroma_store` must not be claimed as OpenAI-embedded: `rag_store.py` creates `OpenAIEmbeddings` but never passes it into Chroma. The stored 384-dimensional vectors match the Chroma default local MiniLM embedding function when recomputed from their documents. Use [the vector verification script](scripts/verify_chroma_vectors.py) against a copy of the store to inspect one ID or all vectors. Rebuild a versioned index with explicit embedding configuration and page metadata before using it in the public app. The [offline analysis trace](docs/offline_trace.md) uses stubbed evidence and no API key.
+The legacy Python prototype can still be started with `docker compose up --build` after copying `.env.example` to `.env` and supplying an `OPENAI_API_KEY`. It is experimental and may incur model charges if used. Ingestion is disabled unless `INGEST_ADMIN_TOKEN` is set, and Compose binds the legacy services to localhost. Its raw model endpoints must **not** be exposed publicly. The 384-dimensional Chroma vectors use the local default ONNX MiniLM embedding function, now explicitly set for ingestion and retrieval in [rag_store.py](src/backend/rags/rag_store.py). The [report manifest](data/report_manifest.json) records source URLs, pages and file hashes; [ingest_reports.py](scripts/ingest_reports.py) adds missing chunks and preserves existing IDs. Use [verify_chroma_vectors.py](scripts/verify_chroma_vectors.py) against a copy of the store to inspect one ID or all vectors. Page metadata is available for the six newly ingested editions; the legacy seven would need rebuilding to gain it. The [offline analysis trace](docs/offline_trace.md) uses stubbed evidence and no API key.
 
 ## Architecture
 
@@ -49,7 +49,7 @@ flowchart LR
   L[Local-only Python prototype] --> C[(Local Chroma store)]
 ```
 
-The Worker needs no database or persistent filesystem. Its static assets and API deploy together. The existing Chroma directory is a persistent **local** artifact; no Vectorize migration or reindex is claimed. See the [architecture walkthrough](docs/ARCHITECTURE.md) and [API contract](docs/API.md). Cloudflare's [React/Worker tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/) and [Cache API documentation](https://developers.cloudflare.com/workers/runtime-apis/cache/) inform this design.
+The Worker needs no database or persistent filesystem. Its static assets and API deploy together. The Chroma directory is a persistent **local** artifact; it has not been migrated to Cloudflare Vectorize. See the [architecture walkthrough](docs/ARCHITECTURE.md) and [API contract](docs/API.md). Cloudflare's [React/Worker tutorial](https://developers.cloudflare.com/workers/vite-plugin/tutorial/) and [Cache API documentation](https://developers.cloudflare.com/workers/runtime-apis/cache/) inform this design.
 
 ## Data and evidence
 

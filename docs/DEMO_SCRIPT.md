@@ -16,6 +16,6 @@ On **production**, switch to **Live data** on Overview and inspect Netherlands G
 
 ## Useful follow-up questions
 
-- “Is this RAG?” — “The original local Python agent is a PDF-based RAG pipeline: it extracts and chunks reports, retrieves passages from Chroma, and sends those passages with live indicator context to an OpenAI model. This deployed Cloudflare demo uses curated report retrieval and deterministic analysis, without a public LLM call. I verified every stored Chroma vector against the default local MiniLM model, but the vector service is not deployed.”
-- “Where is the AI?” — “There is a separate local Python/OpenAI prototype. The public site exposes the seven source reports and two curated passages, but not model synthesis. Adding grounded synthesis would require a versioned index, page metadata and evaluation.”
+- “Is this RAG?” — “The original local Python agent is a PDF-based RAG pipeline: it extracts and chunks reports, retrieves passages from Chroma, and sends those passages with live indicator context to an OpenAI model. This deployed Cloudflare demo uses curated report retrieval and deterministic analysis, without a public LLM call. The local Chroma store has 9,317 vectors from 13 reports, but the vector service is not deployed.”
+- “Where is the AI?” — “There is a separate local Python/OpenAI prototype. The public site exposes 13 source reports and two curated passages, but not model synthesis. Adding grounded synthesis would require retrieval and citation evaluation, plus page metadata for the seven legacy reports.”
 - “What fails safely?” — “Unsupported countries or topics are rejected, null observations are omitted, upstream failure is shown, and citations must resolve to supplied evidence IDs.”

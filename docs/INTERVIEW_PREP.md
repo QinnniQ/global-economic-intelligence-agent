@@ -10,7 +10,7 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 
 “The React front end calls same-origin `/api` routes on a Cloudflare Worker. The Worker validates country, indicator, year range and question length. In live mode it requests World Bank's Indicators API, handles pagination, timeout, transient retries, nulls and malformed values, and caches validated series for six hours. Each response keeps the observation year separate from retrieval time and any provider update date.
 
-“For an analyst question, deterministic code selects supported indicators and calculates descriptive findings. Changes between annual rates are percentage-point changes. A two-passage, manually reviewed report index can return page-linked context when the country and topic match. Indicator values always come from the World Bank series or the labelled saved fixture. The PDF is generated in the browser from the analysis already on screen. The separate Python/Chroma/OpenAI code is a local prototype, not the deployed backend. Its 4,767 stored vectors were verified against Chroma's local default MiniLM model.”
+“For an analyst question, deterministic code selects supported indicators and calculates descriptive findings. Changes between annual rates are percentage-point changes. A two-passage, manually reviewed report index can return page-linked context when the country and topic match. Indicator values always come from the World Bank series or the labelled saved fixture. The PDF is generated in the browser from the analysis already on screen. The separate Python/Chroma/OpenAI code is a local prototype, not the deployed backend. Its local store has 9,317 vectors from 13 reports, including six 2026 editions, using Chroma's local default MiniLM model.”
 
 ## Five-minute deeper walkthrough
 
@@ -29,8 +29,8 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 | **Backend** | The public Cloudflare Worker: input validation, World Bank requests, caching and deterministic analysis. |
 | **React** | The front-end framework in `web/src/main.tsx`; TypeScript is the language used by front and Worker. |
 | **Cloudflare Worker** | The hosted JavaScript runtime serving the API and built site. It is hosting, not a model or database. |
-| **Embeddings** | Numeric vectors used to compare text meaning. The local Python file creates an `OpenAIEmbeddings` object, but does not pass it into Chroma. All 4,767 stored vectors numerically match Chroma's default local MiniLM embedding function when recomputed from their documents. The public app uses no embeddings. |
-| **Vector search** | Nearest-neighbor lookup over embeddings. The public report index does not do this. The local Chroma artifact must be rebuilt and validated before any public vector-search claim. |
+| **Embeddings** | Numeric vectors used to compare text meaning. The local Python file explicitly selects Chroma's default ONNX MiniLM embedding function. Its 9,317 vectors cover 13 PDF editions; the 4,767 original vectors were independently recomputed and matched. The public app uses no embeddings. |
+| **Vector search** | Nearest-neighbor lookup over embeddings. The public report index does not do this. The local Chroma artifact is separate from the public Worker and needs retrieval and citation evaluation before any public vector-search claim. |
 | **RAG** | Retrieval-augmented generation: retrieve documents, supply them to a model, and generate a grounded answer. The public app retrieves context but does not generate with a model, so call it curated retrieval with deterministic analysis. |
 | **Caching** | Temporarily reusing a validated live series for six hours. `web/worker/index.ts` uses Cloudflare's Cache API; `retrievedAt` remains the original fetch time. |
 | **CI/CD** | GitHub Actions in `.github/workflows/ci.yml` tests and builds on push/PR. Deployment is by explicit Wrangler scripts in `web/scripts/deploy.mjs`, not automatic production release. |
@@ -46,11 +46,11 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 
 **Why no public LLM?** The current Worker has no configured model service, cost control or validated vector index. A model path without grounded evaluation would weaken the reliability of the demo.
 
-**Was the original agent RAG?** Yes, the local Python design extracts text from PDFs, chunks it, stores passages in Chroma, retrieves passages for a question, and supplies them to an OpenAI model for answer synthesis. That is distinct from the currently deployed Cloudflare demo, which uses curated retrieval and deterministic analysis. The local code instantiates `OpenAIEmbeddings` but does not pass it into Chroma. The persisted vectors match Chroma's default local MiniLM model; retrieval relevance and answer quality still need evaluation.
+**Was the original agent RAG?** Yes, the local Python design extracts text from PDFs, chunks it, stores passages in Chroma, retrieves passages for a question, and supplies them to an OpenAI model for answer synthesis. That is distinct from the currently deployed Cloudflare demo, which uses curated retrieval and deterministic analysis. The local code now explicitly selects Chroma's default local MiniLM embedding function. Retrieval relevance and answer quality still need evaluation.
 
-**Is the local Python prototype production ready?** No. It uses FastAPI, Chroma and OpenAI code, but it is separate from the public Worker. Vector compatibility is verified, while page metadata, retrieval relevance and model answer quality still need work. Some Python tests mock the model and retrieval, so they do not establish real quality.
+**Is the local Python prototype production ready?** No. It uses FastAPI, Chroma and OpenAI code, but it is separate from the public Worker. The new 2026 chunks have PDF page metadata; legacy chunks still lack it. Retrieval relevance and model answer quality still need work. Some Python tests mock the model and retrieval, so they do not establish real quality.
 
-**What would you build next?** First measure and investigate the intermittent live provider timeouts across Worker regions, using request IDs and provider status while protecting question content. Then expand and license a small report corpus, rebuild a versioned vector index with explicit embedding configuration, and measure retrieval relevance and claim support before adding bounded server-side synthesis.
+**What would you build next?** First measure and investigate the intermittent live provider timeouts across Worker regions, using request IDs and provider status while protecting question content. Then assess publisher redistribution terms, add page metadata to the legacy corpus, and measure retrieval relevance and claim support before adding bounded server-side synthesis.
 
 ## Three actual limitations
 
