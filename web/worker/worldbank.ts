@@ -9,6 +9,9 @@ export function parseWorldBank(payload: unknown, country: Country, indicator: In
   const meta = payload[0] as Record<string, unknown>;
   const pages = Number(meta.pages);
   if (!Number.isInteger(pages) || pages < 1 || pages > 20) throw new UpstreamError('World Bank pagination metadata is invalid.');
+  if (meta.page !== undefined && (!Number.isInteger(Number(meta.page)) || Number(meta.page) < 1 || Number(meta.page) > pages)) {
+    throw new UpstreamError('World Bank page metadata is invalid.');
+  }
   const observations: Observation[] = [];
   for (const row of payload[1]) {
     if (!row || typeof row !== 'object') continue;
@@ -23,7 +26,7 @@ export function parseWorldBank(payload: unknown, country: Country, indicator: In
   const sourceUrl = `https://data.worldbank.org/indicator/${indicator}?locations=${country}`;
   return { country, indicator, provider: 'World Bank', frequency: 'annual', name: INDICATORS[indicator].name,
     definition: INDICATORS[indicator].definition, unit: INDICATORS[indicator].unit, sourceUrl,
-    retrievedAt, providerUpdatedAt: typeof meta.lastupdated === 'string' ? meta.lastupdated : null,
+    retrievedAt, providerUpdatedAt: typeof meta.lastupdated === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(meta.lastupdated) ? meta.lastupdated : null,
     observations: unique, stale: false };
 }
 
@@ -51,7 +54,12 @@ export async function fetchSeries(country: Country, indicator: Indicator, start:
   const pages = Number((first as unknown[])[0] && ((first as unknown[])[0] as Record<string, unknown>).pages);
   for (let page = 2; page <= pages; page++) {
     url.searchParams.set('page', String(page));
-    const next = parseWorldBank(await getPage(), country, indicator, start, end, retrievedAt);
+    const payload = await getPage();
+    const next = parseWorldBank(payload, country, indicator, start, end, retrievedAt);
+    const metadata = (payload as unknown[])[0] as Record<string, unknown>;
+    if (Number(metadata.pages) !== pages || (metadata.page !== undefined && Number(metadata.page) !== page)) {
+      throw new UpstreamError('World Bank pagination changed during retrieval.');
+    }
     base.observations.push(...next.observations);
   }
   base.observations = [...new Map(base.observations.map(o => [o.year, o])).values()].sort((a, b) => b.year - a.year);

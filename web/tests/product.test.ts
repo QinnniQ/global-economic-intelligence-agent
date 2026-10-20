@@ -7,6 +7,7 @@ import { renderBriefing } from '../worker/pdf';
 import { retrieveReports, validateEvidenceIds } from '../worker/reports';
 import { fetchSeries, parseWorldBank, UpstreamError } from '../worker/worldbank';
 import worker from '../worker/index';
+import evaluation from '../eval/questions.v1.json';
 
 describe('country and question handling', () => {
   it('matches words, not substrings, and keeps the selection authoritative', () => {
@@ -39,6 +40,13 @@ describe('World Bank data integrity', () => {
     const s = await fetchSeries('DE', 'FP.CPI.TOTL.ZG', 2020, 2025, fetcher as unknown as typeof fetch);
     expect(fetcher).toHaveBeenCalledTimes(2);
     expect(s.observations.map(o=>o.year)).toEqual([2024,2023]);
+  });
+  it('rejects a changing upstream page count rather than returning a partial series', async () => {
+    const fetcher = vi.fn(async (url: URL | RequestInfo) => new Response(JSON.stringify([
+      { pages: String(url).includes('page=2') ? 3 : 2, page: String(url).includes('page=2') ? 2 : 1 },
+      [row('2024', 1.2)],
+    ]), { status: 200 }));
+    await expect(fetchSeries('NL', 'NY.GDP.MKTP.KD.ZG', 2020, 2025, fetcher as unknown as typeof fetch)).rejects.toThrow(/pagination changed/);
   });
   it('rejects malformed responses and upstream failures', async () => {
     expect(() => parseWorldBank({}, 'NL','FP.CPI.TOTL.ZG',2020,2025,'2026-10-15')).toThrow(UpstreamError);
@@ -100,6 +108,12 @@ describe('analysis and briefing', () => {
 describe('public Worker API', () => {
   const env = { ASSETS: { fetch: async () => new Response('asset') } } as unknown as Parameters<typeof worker.fetch>[1];
   const ctx = { waitUntil: () => undefined } as unknown as Parameters<typeof worker.fetch>[2];
+  it('reports app health without checking World Bank or model services', async () => {
+    const response = await worker.fetch(new Request('https://example.test/api/health'), env, ctx);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ status: 'ok', upstreamChecked: false, modelGenerationEnabled: false });
+    expect(response.headers.get('x-request-id')).toBeTruthy();
+  });
   it('serves the labelled saved series without provider credentials', async () => {
     const response = await worker.fetch(new Request('https://example.test/api/series?country=NL&indicator=NY.GDP.MKTP.KD.ZG&start=2024&end=2025&mode=demo'), env, ctx);
     expect(response.status).toBe(200);
@@ -117,5 +131,37 @@ describe('public Worker API', () => {
     expect(answer.findings[0].evidenceIds[0]).toBe('WB:NL:NY.GDP.MKTP.KD.ZG');
     const invalid = await worker.fetch(new Request('https://example.test/api/analysis', {method:'POST',body:'null'}), env, ctx);
     expect(invalid.status).toBe(400);
+  });
+  it('rejects an unknown mode with a traceable JSON error', async () => {
+    const response = await worker.fetch(new Request('https://example.test/api/series?country=NL&indicator=FP.CPI.TOTL.ZG&mode=unknown'), env, ctx);
+    expect(response.status).toBe(400);
+    const body = await response.json() as { error: string; requestId: string };
+    expect(body.error).toMatch(/mode/);
+    expect(body.requestId).toBe(response.headers.get('x-request-id'));
+  });
+});
+
+describe('versioned question evaluation fixtures', () => {
+  it('matches expected evidence and rejection behaviour for all ten saved-data cases', () => {
+    expect(evaluation.questions).toHaveLength(10);
+    for (const item of evaluation.questions) {
+      const country = item.country as Parameters<typeof resolveCountry>[1];
+      if ('expectedError' in item) {
+        expect(() => {
+          const selected = resolveCountry(item.question, country);
+          const indicators = detectIndicators(item.question);
+          if (!indicators.length) throw new Error('This release supports GDP growth, consumer-price inflation, and unemployment.');
+          buildAnalysis(item.question, selected, indicators.map(code => demoSeries(selected, code)));
+        }, item.id).toThrow(item.expectedError);
+        continue;
+      }
+      const selected = resolveCountry(item.question, country);
+      const indicators = detectIndicators(item.question);
+      const answer = buildAnalysis(item.question, selected, indicators.map(code => demoSeries(selected, code)));
+      expect(answer.indicators, item.id).toEqual(item.expectedIndicators);
+      expect(answer.evidence.filter(e => e.kind === 'report').map(e => e.id), item.id).toEqual(item.expectedReportIds);
+      expect(answer.findings.every(f => validateEvidenceIds(f.evidenceIds, answer.evidence)), item.id).toBe(true);
+      expect(answer.findings.every(f => !f.text.includes('percentage points')), item.id).toBe(true);
+    }
   });
 });
