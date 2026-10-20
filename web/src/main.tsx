@@ -2,16 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 import { COUNTRIES, INDICATORS, INDICATOR_CODES, commonPeriod, type Analysis, type Country, type Indicator, type Series } from './domain';
+import { REPORT_SOURCES } from './reportCatalog';
 import './style.css';
 
-type View = 'overview' | 'compare' | 'analyst' | 'methodology';
+type View = 'overview' | 'compare' | 'analyst' | 'methodology' | 'sources';
 const countryEntries = Object.entries(COUNTRIES) as [Country, string][];
 const indicatorEntries = Object.entries(INDICATORS) as [Indicator, typeof INDICATORS[Indicator]][];
 const params = new URLSearchParams(location.search);
 const initialCountry = (params.get('country') && Object.hasOwn(COUNTRIES, params.get('country')!) ? params.get('country') : 'NL') as Country;
 const initialIndicator = (params.get('indicator') && Object.hasOwn(INDICATORS, params.get('indicator')!) ? params.get('indicator') : INDICATOR_CODES[0]) as Indicator;
 const initialCountries = (params.get('countries') ?? 'NL,DE,FR').split(',').filter(c => Object.hasOwn(COUNTRIES, c)).slice(0, 4) as Country[];
-const initialView = (['overview','compare','analyst','methodology'].includes(params.get('view') ?? '') ? params.get('view') : 'overview') as View;
+const initialView = (['overview','compare','analyst','methodology','sources'].includes(params.get('view') ?? '') ? params.get('view') : 'overview') as View;
 const initialMode = params.get('mode') === 'live' ? 'live' : 'demo';
 const initialStart = Math.max(2000, Math.min(new Date().getFullYear() - 1, Number(params.get('start')) || 2010));
 const initialEnd = Math.max(initialStart + 1, Math.min(new Date().getFullYear(), Number(params.get('end')) || new Date().getFullYear()));
@@ -108,7 +109,7 @@ function App() {
   return <><a className="skip" href="#main">Skip to content</a><div className="shell">
     <aside className="sidebar"><div className="brand"><span className="brand-mark">EI</span><span>ECONOMIC<br/>INTELLIGENCE</span></div>
       <div className="sidebar-label">WORKSPACE</div><nav aria-label="Primary navigation">
-        {([['overview','Overview'],['compare','Compare'],['analyst','Ask the analyst'],['methodology','Methodology']] as [View,string][]).map(([key,label],i) => <button key={key} className={`nav-item ${view === key ? 'active' : ''}`} onClick={() => setView(key)} aria-current={view === key ? 'page' : undefined}><span className="nav-index">0{i+1}</span>{label}<span className="nav-arrow">↗</span></button>)}
+        {([['overview','Overview'],['compare','Compare'],['analyst','Ask the analyst'],['methodology','Methodology'],['sources','Source library']] as [View,string][]).map(([key,label],i) => <button key={key} className={`nav-item ${view === key ? 'active' : ''}`} onClick={() => setView(key)} aria-current={view === key ? 'page' : undefined}><span className="nav-index">0{i+1}</span>{label}<span className="nav-arrow">↗</span></button>)}
       </nav><div className="sidebar-bottom"><span className="dot"/> WORLD BANK DATA<br/><small>Annual observations · sourced</small></div>
     </aside><div className="main-area"><header className="topbar"><span>GLOBAL ECONOMIC INTELLIGENCE AGENT</span><span className="topbar-right">RESEARCH WORKSPACE <span className="topbar-rule"/> 2026</span></header>
       <main id="main" tabIndex={-1}><div className="mode-bar" role="group" aria-label="Data mode"><span>{mode === 'demo' ? 'SAVED DEMONSTRATION · REVIEWED 15 OCT 2026 · ROUNDED VALUES' : 'LIVE WORLD BANK API · ANNUAL SERIES'}</span><div><button className={mode === 'demo' ? 'on' : ''} onClick={()=>setMode('demo')} aria-pressed={mode === 'demo'}>Saved demo</button><button className={mode === 'live' ? 'on' : ''} onClick={()=>setMode('live')} aria-pressed={mode === 'live'}>Live data</button></div></div>
@@ -144,6 +145,11 @@ function App() {
           </article>}
         </>}
         {view === 'methodology' && <><section className="page-heading"><div className="eyebrow">04 / METHODOLOGY</div><h1>What the evidence can say.</h1><p>A concise account of the sources, calculations, and deliberate limits of this release.</p></section><div className="method-grid"><section className="panel"><h2>Data</h2><p>Annual World Bank Indicators API observations for five countries. GDP growth and consumer-price inflation are annual percentage rates. Unemployment is the modeled ILO estimate, expressed as a percentage of the labor force.</p><p>The saved demonstration has rounded 2024 and 2025 values transcribed from official World Bank pages reviewed 15 October 2026. It has one observation per indicator and cannot establish a trend. Live mode retrieves full series. Missing observations are left blank.</p></section><section className="panel"><h2>Analysis</h2><p>Findings are calculated in application code. A change from one annual percentage value to another is reported in percentage points. No interpolation, forecast, causal explanation or personalized investment advice is generated.</p><p>The public analyst currently uses no paid model calls. Report excerpts appear only when verified passage metadata is available; this release does not claim report support where there is none.</p></section><section className="panel"><h2>Freshness and availability</h2><p>Live series are fetched through the Cloudflare Worker and cached for six hours. A failed upstream request is shown as an error. Retrieval date is separate from observation year.</p><p>Exports are rendered from the exact analysis object displayed in the browser. The PDF does not rerun retrieval or generation.</p></section></div></>}
+        {view === 'sources' && <><section className="page-heading"><div className="eyebrow">05 / SOURCE LIBRARY</div><h1>Read the original reports.</h1><p>Open the seven publisher PDFs that formed the local Chroma retrieval corpus. File fingerprints and index counts make the source set inspectable.</p></section>
+          <div className="source-summary"><strong>7 reports</strong><span>{REPORT_SOURCES.reduce((total, report) => total + report.chunks, 0).toLocaleString('en-GB')} indexed chunks in the original Python prototype</span></div>
+          <div className="source-grid">{REPORT_SOURCES.map(report => <article className="source-card" key={report.id}><div className="source-card-top"><span>{report.publisher}</span><span>{report.issue}</span></div><h2>{report.title}</h2><p>{report.pages} PDF pages · {report.chunks.toLocaleString('en-GB')} stored chunks · index ID <code>{report.id}</code></p><div className="source-card-bottom"><a href={report.url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${report.title} PDF from ${report.publisher} in a new tab`}>Open publisher PDF ↗</a><span>{report.publicPassage ? 'Public analyst: one curated passage' : 'Local prototype corpus'}</span></div><details><summary>Local file fingerprint</summary><code>SHA-256 {report.sha256}</code></details></article>)}</div>
+          <div className="source-caveat"><strong>How this relates to the public analyst</strong><p>The Python prototype indexed all seven PDFs in Chroma. This website currently uses two manually reviewed report passages, one from the ECB and one from the OECD. The other reports are available to read here but are not searched by the public analyst. Publisher links open the full reports; the original index did not preserve page numbers for each chunk.</p></div>
+        </>}
       </main><footer>GLOBAL ECONOMIC INTELLIGENCE AGENT <span>Source: World Bank Indicators API · <a href="https://data.worldbank.org" target="_blank" rel="noreferrer">data.worldbank.org ↗</a></span></footer>
     </div></div></>;
 }

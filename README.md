@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 20 October 2026:** the updated application is deployed at [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=overview&mode=demo&country=NL). Production version: `ee986b90-75b6-4835-a574-cb714e50486a`; preview version: `32fca619-fef7-45de-8056-f2bb49c54301`. On the production custom domain, health, saved analysis, live Netherlands observations and a live analyst answer were checked in a browser. The preview comparison, mobile layout and PDF export were also checked. An earlier production live request failed before this deployment; provider availability should still be rechecked before a demo. No paid model service is configured. See [verification](docs/VERIFICATION.md) for the exact scope of each check.
+**Release status, 20 October 2026:** the updated application is deployed at [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources). Production version: `e2069b89-d01a-4779-a591-a315256ef698`; preview version: `b8e02e8b-c803-42c3-979c-94395032e5b4`. The new Source library was inspected on both domains, and all seven publisher PDF links appeared in the production page. Earlier browser checks covered health, saved analysis, live Netherlands observations, comparison, mobile layout and PDF export. Provider availability should be rechecked before a demo. No paid model service is configured. See [verification](docs/VERIFICATION.md) for the exact scope of each check.
 
 ## Visitor experience
 
@@ -14,9 +14,10 @@ An economic research workspace that asks: **What is happening in this economy, w
 - Use a clearly labelled saved demonstration without any credentials. Live mode retrieves full annual World Bank series.
 - Compare two to four countries across a chosen indicator and date window, with an aligned chart, table, common observation year and shareable URL.
 - Ask a single-country question and inspect source-linked findings, relevant page-linked report passages and explicit limitations.
+- Open all seven reports from the Source library, with publisher PDF links, local file fingerprints and original index counts.
 - Export the **displayed** analysis as a PDF in the browser. Export never reruns retrieval or analysis.
 
-The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment; its committed Chroma index has unverified embedding provenance.
+The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors have been checked against Chroma's local default embedding function; the index does not retain per-chunk PDF page metadata.
 
 ## Run and verify
 
@@ -34,7 +35,7 @@ npm test
 npm run build
 ```
 
-The legacy Python prototype can still be started with `docker compose up --build` after copying `.env.example` to `.env` and supplying an `OPENAI_API_KEY`. It is experimental and may incur model charges if used. Ingestion is disabled unless `INGEST_ADMIN_TOKEN` is set, and Compose binds the legacy services to localhost. Its raw model endpoints must **not** be exposed publicly. The existing `chroma_store` must not be claimed as OpenAI-embedded: `rag_store.py` creates `OpenAIEmbeddings` but never passes it into Chroma. Rebuild and validate a versioned index before relying on it. The [offline analysis trace](docs/offline_trace.md) uses stubbed evidence and no API key.
+The legacy Python prototype can still be started with `docker compose up --build` after copying `.env.example` to `.env` and supplying an `OPENAI_API_KEY`. It is experimental and may incur model charges if used. Ingestion is disabled unless `INGEST_ADMIN_TOKEN` is set, and Compose binds the legacy services to localhost. Its raw model endpoints must **not** be exposed publicly. The existing `chroma_store` must not be claimed as OpenAI-embedded: `rag_store.py` creates `OpenAIEmbeddings` but never passes it into Chroma. The stored 384-dimensional vectors match the Chroma default local MiniLM embedding function when recomputed from their documents. Use [the vector verification script](scripts/verify_chroma_vectors.py) against a copy of the store to inspect one ID or all vectors. Rebuild a versioned index with explicit embedding configuration and page metadata before using it in the public app. The [offline analysis trace](docs/offline_trace.md) uses stubbed evidence and no API key.
 
 ## Architecture
 
