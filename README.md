@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. The site now includes page search, partial live analysis and freshness monitoring; see [verification](docs/VERIFICATION.md) for deployment and test details. No paid model service is configured.
+**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. Production Worker version `5c65cd36-4cd8-4fac-9fa4-72323e118f07` includes page search, partial live analysis and freshness monitoring; see [verification](docs/VERIFICATION.md) for test scope. No paid model service is configured.
 
 ## Visitor experience
 
