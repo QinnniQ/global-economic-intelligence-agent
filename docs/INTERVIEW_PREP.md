@@ -18,8 +18,8 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 2. **Data boundary:** `web/worker/worldbank.ts` calls the official API. It validates the two-element JSON response, follows pages, excludes null or nonnumeric values, preserves genuine zero, sorts years and keeps source metadata. `web/worker/index.ts` bounds inputs and returns consistent JSON errors and request IDs.
 3. **Calculation boundary:** `web/src/domain.ts` and `web/worker/analysis.ts` compute findings. A 3.3% rate becoming 3.9% is a rise of **0.6 percentage points**, not 0.6%. One observation is not a trend; gaps between years are disclosed.
 4. **Evidence boundary:** `web/worker/reports.ts` holds two verified excerpts with publisher, URL, publication date, page, stable passage ID, checksum and ingestion version. Matching is curated by geography, indicator and terms. This is retrieval, but neither vector search nor generative RAG. Citation-ID validation catches unknown IDs; human review is still needed to decide if a claim is supported.
-5. **Operations:** `web/wrangler.jsonc` deploys assets and API to the same Worker with preview and production names. The Worker cache lasts up to six hours and is local to a Cloudflare data centre. `/api/health` checks application response only. The saved mode works without the upstream API. The UI shows a failure rather than silently switching data sources.
-6. **Verification:** `web/tests/product.test.ts` tests deterministic logic, mocked World Bank responses, API routes and PDF construction. The versioned ten-question set checks expected evidence and rejection behavior. After deployment on 20 October 2026, both preview and production retrieved live Netherlands annual observations and produced a live analyst answer. An earlier production request failed, so still keep the saved fallback ready.
+5. **Operations:** `web/wrangler.jsonc` deploys assets and API to the same Worker with preview and production names. The Worker cache lasts up to six hours and is local to a Cloudflare data centre. `/api/health` checks application response only. The saved mode works without the upstream API. If a live indicator fails, other successful indicators remain visible with an error and request ID; the UI never silently switches data sources.
+6. **Verification:** `web/tests/product.test.ts` has 18 passing tests for deterministic logic, mocked World Bank responses, API routes and PDF construction. The versioned ten-question set checks expected evidence and rejection behavior. A 20 October 2026 production browser review exercised the saved overview, comparison, analyst and methodology pages and retrieved live Netherlands annual observations. A preview request also reproduced an intermittent World Bank timeout; the UI retained the successful indicator and showed recovery controls.
 
 ## Technology glossary tied to files
 
@@ -42,20 +42,28 @@ Use these as explanations of **the current repository**. Adapt the first-person 
 
 **How do you know a citation supports a sentence?** Code checks that the ID exists in the returned evidence. That is necessary but insufficient; a reviewer still checks the actual observation or passage against the claim. No independent model-quality score is claimed.
 
-**What happens when World Bank is down?** The API returns a traceable error after bounded attempts. The UI reports the failure; the saved demonstration is explicitly dated. It never silently presents the snapshot as live.
+**What happens when World Bank is down?** The API returns a traceable error after bounded attempts. On Overview and Compare, successful series remain visible when another request fails. The UI names unavailable series and offers retry or the explicitly dated saved demonstration. It never silently presents the snapshot as live.
 
 **Why no public LLM?** The current Worker has no configured model service, cost control or validated vector index. A model path without grounded evaluation would weaken the reliability of the demo.
 
 **Is the local Python prototype production ready?** No. It uses FastAPI, Chroma and OpenAI code, but it is separate from the public Worker and its stored embedding configuration is not verified. Some Python tests mock the model and retrieval, so they do not establish real quality.
 
-**What would you build next?** First investigate the live provider failure. Then expand and license a small report corpus, rebuild a versioned vector index with explicit embedding configuration, and measure retrieval relevance and claim support before adding bounded server-side synthesis.
+**What would you build next?** First measure and investigate the intermittent live provider timeouts across Worker regions, using request IDs and provider status while protecting question content. Then expand and license a small report corpus, rebuild a versioned vector index with explicit embedding configuration, and measure retrieval relevance and claim support before adding bounded server-side synthesis.
 
 ## Three actual limitations
 
 1. The public report index has only two curated passages. It cannot answer broad research questions or claim semantic RAG.
-2. Live World Bank mode succeeded on both production and preview after deployment, but one earlier production browser request failed. Provider or edge availability can vary; keep the saved mode ready and investigate repeated failures.
+2. Live World Bank mode has succeeded, but an intermittent provider timeout was also reproduced on 20 October 2026. Partial data handling protects the interface, but it does not make the upstream source continuously available. Keep the saved mode ready.
 3. The saved fixture has a single rounded observation per indicator. It supports a dependable cross-section but no trend or current-period inference.
 
 ## How to discuss AI coding assistance
 
 You may say the repository was developed or reviewed with AI assistance **only if that matches your own experience**. This review read the public and local paths, checked report-file checksums, ran the TypeScript tests and build, and exercised the deployed saved analyst and PDF. It did **not** independently validate model output, prove the Chroma vectors' provenance, or establish who authored earlier commits. Confirm your own contribution and review history before making personal claims.
+
+## Interview rehearsal for 21 October 2026
+
+- Lead with the user problem and the evidence trail, then explain React, the Worker, and the World Bank API. Do not start with the technology list.
+- Demo the saved path first. It gives you stable numbers and lets you show the source table, comparison, bounded analyst, report context, limitations, and PDF in three minutes. Use live mode as an optional second branch.
+- If asked “Where is the AI?”, explain the current public boundary plainly: deterministic analysis and curated retrieval. The Python/OpenAI/Chroma code is a separate local prototype, not a public RAG service. Explain the validation work needed before deploying synthesis.
+- If asked “What did you personally do?”, describe only work you can personally substantiate. Separate decisions you made from implementation you reviewed or produced with AI assistance.
+- Ask the interviewer how their teams validate source quality and claim support in client-facing AI systems, and how they decide when a deterministic workflow should gain a model step. These connect this project's trade-offs to Xebia's stated emphasis on [trusted data foundations](https://nl.xebia.com/) and [engineering craftsmanship](https://xebia.com/careers/?filters=Netherlands).

@@ -35,3 +35,11 @@ Before the new deployment, the production **Live data** toggle for Netherlands s
 4. The Worker has only a per-isolate request guard; it is not a global rate limit. The browser bundle is relatively large.
 
 Rollback, if a later deployment is made: select the previous Worker version in Cloudflare **Deployments**, or use `npx wrangler rollback --name global-economic-intelligence` for production after confirming the target version. [Cloudflare rollback guide](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
+
+## Final interview review after the dropdown fix
+
+On 20 October 2026, the production Worker was updated to version `154f8aba-ffb8-40da-a1dc-52e9318bb567` from commit `fd6c356`; `main` and `origin/main` matched. The changed release built successfully and all 18 web tests passed. The new Economy control was verified in preview and production as a native dropdown listing Netherlands, Germany, France, United Kingdom (UK), and United States (US). Preview selections of France, UK and US changed the URL, values and source links.
+
+A fresh production browser review exercised the saved Netherlands overview and underlying data table, the three-country GDP comparison, the default saved analyst question with source evidence, and the methodology page. Live Netherlands Overview displayed 2025 GDP growth 1.78%, inflation 3.2%, and modeled unemployment 3.87%; the GDP table included 2024 at 1.07%, showed the original cached retrieval time, and labelled the provider update as 8 October 2026. These are point-in-time observations, not a guarantee of provider availability during the interview.
+
+An independent preview browser request for the US reproduced World Bank timeouts for two indicators while inflation succeeded. The new partial-result behavior kept the inflation card and historical series visible, named the two unavailable indicators, displayed a request ID, and offered separated retry and saved-demo controls. The underlying intermittent timeout has not been traced to a specific provider or edge cause. The saved three-minute path is therefore the dependable demo route.
