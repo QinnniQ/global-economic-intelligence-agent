@@ -1,14 +1,14 @@
 # Public API contract
 
-All routes are same-origin under `/api`. Successful JSON responses include `x-request-id`. Failures use `{"error":"human-readable message","requestId":"UUID"}` and the same header. The Worker sends `Cache-Control: no-store` to browsers; only validated live series are retained in its private six-hour edge cache. No authentication or paid inference is used. Inputs are allowlisted to five country codes (`NL`, `DE`, `FR`, `GB`, `US`) and three World Bank indicator codes (`NY.GDP.MKTP.KD.ZG`, `FP.CPI.TOTL.ZG`, `SL.UEM.TOTL.ZS`).
+All routes are same-origin under `/api`. Successful JSON responses include `x-request-id`. Failures use `{"error":"human-readable message","requestId":"UUID"}` and the same header. The Worker sends `Cache-Control: no-store` to browsers; only validated live series are retained in its private six-hour edge cache. Report retrieval uses no paid model API and has no visitor authentication. Inputs are allowlisted to five country codes (`NL`, `DE`, `FR`, `GB`, `US`) and three World Bank indicator codes (`NY.GDP.MKTP.KD.ZG`, `FP.CPI.TOTL.ZG`, `SL.UEM.TOTL.ZS`).
 
 ## `GET /api/health`
 
-Returns HTTP 200: `{"status":"ok","upstreamChecked":false,"modelGenerationEnabled":false}`. This confirms only the Worker handler is responding.
+Returns HTTP 200: `{"status":"ok","upstreamChecked":false,"modelGenerationEnabled":false}`. The false value means the Worker has no server-side model generation. This confirms only the Worker handler is responding.
 
 ## `GET /api/catalog`
 
-Returns `countries`, `indicators` (names, units and definitions), and `modelGenerationEnabled:false`. Use it to discover supported codes.
+Returns `countries`, `indicators` (names, units and definitions), `modelGenerationEnabled:false`, and `onDeviceRagAvailable:true`. Browser generation still requires WebGPU and a model download.
 
 ## `GET /api/series`
 
@@ -53,4 +53,8 @@ Example finding from the saved fixture:
 {"text":"GDP growth was 1.1% in 2024, the saved demonstration observation.","evidenceIds":["WB:NL:NY.GDP.MKTP.KD.ZG"]}
 ```
 
-No API endpoint regenerates a PDF. `web/worker/pdf.ts` renders the displayed `Analysis` object in the browser. No public document ingestion or model endpoint exists.
+No API endpoint regenerates a PDF. `web/worker/pdf.ts` renders the displayed `Analysis` object in the browser. There is no public document ingestion endpoint.
+
+## `POST /api/report-excerpts`
+
+JSON request: `{"question":"Netherlands inflation","pages":[{"reportId":"ec_forecast_2026","page":138}]}`. The question must be 8–300 characters, the body at most 1,200 characters, and the `pages` array at most five entries. Report IDs and PDF page numbers are checked against the catalog. The browser selects candidate pages using the lexical index; the Worker reads hash-matched static page artifacts internally and returns short excerpts. Each response item has `reportId`, `title`, `publisher`, `issue`, `page`, `url` pointing to the publisher PDF page, and `text`. Invalid input returns 400 or 413, request guard rejection returns 429, and an asset failure returns 503. Direct requests for `/report-pages.v1/*` return 404. The removed `/api/rag` paid-model route returns 404. See [Public report RAG](PUBLIC_RAG.md) for the architecture and limits.

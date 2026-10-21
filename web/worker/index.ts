@@ -4,6 +4,7 @@ import { fetchSeries, UpstreamError } from './worldbank';
 import { demoSeries, SNAPSHOT_DATE } from '../src/demo';
 import { buildAnalysis } from './analysis';
 import { probeWorldBank } from './probe';
+import { loadExcerpts, type PageRequest } from './reportExcerpts';
 
 interface Env { ASSETS: Fetcher; }
 const json = (data: unknown, status = 200, id?: string) => Response.json(data, { status, headers: { 'cache-control': 'no-store', 'x-content-type-options': 'nosniff', ...(id ? { 'x-request-id': id } : {}) } });
@@ -41,10 +42,20 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const requestId = crypto.randomUUID();
     const url = new URL(request.url);
+    if (url.pathname.startsWith('/report-pages.v1/')) return problem('Not found.', 404, requestId);
     if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
     try {
       if (url.pathname === '/api/health' && request.method === 'GET') return json({ status: 'ok', upstreamChecked: false, modelGenerationEnabled: false }, 200, requestId);
-      if (url.pathname === '/api/catalog' && request.method === 'GET') return json({ countries: COUNTRIES, indicators: INDICATORS, modelGenerationEnabled: false }, 200, requestId);
+      if (url.pathname === '/api/catalog' && request.method === 'GET') return json({ countries: COUNTRIES, indicators: INDICATORS, modelGenerationEnabled: false, onDeviceRagAvailable: true }, 200, requestId);
+      if (url.pathname === '/api/report-excerpts' && request.method === 'POST') {
+        if (!allowRequest(request, 'excerpts')) return problem('Request limit reached. Try again shortly.', 429, requestId);
+        const raw = await request.text();
+        if (raw.length > 1200) return problem('Request too long.', 413, requestId);
+        let body: { question?: unknown; pages?: unknown } | null;
+        try { body = JSON.parse(raw); } catch { return problem('Invalid request body.', 400, requestId); }
+        if (!body || typeof body.question !== 'string' || body.question.trim().length < 8 || body.question.length > 300 || !Array.isArray(body.pages) || body.pages.length > 5 || body.pages.some(item => !item || typeof item.reportId !== 'string' || !Number.isInteger(item.page))) return problem('Enter a question and up to five report pages.', 400, requestId);
+        return json({ excerpts: await loadExcerpts(body.question, body.pages as PageRequest[], url.origin, env.ASSETS) }, 200, requestId);
+      }
       if (url.pathname === '/api/series' && request.method === 'GET') {
         if (!allowRequest(request, 'series')) return problem('Request limit reached. Try again shortly.', 429, requestId);
         const country = (url.searchParams.get('country') ?? '').toUpperCase();

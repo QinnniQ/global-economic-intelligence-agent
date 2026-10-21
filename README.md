@@ -6,7 +6,7 @@ An economic research workspace that asks: **What is happening in this economy, w
 
 ![Economic overview in the saved demonstration, supplied by the project owner](docs/overview.png)
 
-**Release status, 20 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. Production Worker version `5c65cd36-4cd8-4fac-9fa4-72323e118f07` includes page search, partial live analysis and freshness monitoring; see [verification](docs/VERIFICATION.md) for test scope. No paid model service is configured.
+**Release status, 21 October 2026:** [econ.nickcloud.dev](https://econ.nickcloud.dev/?view=sources) lists 13 official reports, including six 2026 editions. The local Chroma collection contains 9,317 chunks. The public analyst offers report page retrieval and optional on-device generation without a paid model API. See [the public report mode](docs/PUBLIC_RAG.md) for its limits and verification.
 
 ## Visitor experience
 
@@ -17,9 +17,9 @@ An economic research workspace that asks: **What is happening in this economy, w
 - Search pages across all 13 source PDFs, then open a matching page at the publisher. The library also shows file fingerprints and index counts.
 - Export the **displayed** analysis as a PDF in the browser. Export never reruns retrieval or analysis.
 
-The public analyst is deterministic. It makes no paid model calls, forecasts, causal claims or personalized investment recommendations. The two-passage report index is **curated retrieval, not semantic vector RAG**. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors use Chroma's explicit local default embedding function. The six 2026 editions have per-chunk PDF page metadata; the seven original editions retain their legacy chunks without pages.
+The observed-data analyst is deterministic. Its two-passage report index is curated retrieval. The public Report RAG mode searches a lexical page index over all 13 PDFs, displays short page-linked excerpts, and optionally generates a synthesis in the visitor's browser. It does not use a server-side vector store or the local Chroma collection. Generation requires WebGPU and an approximately 117 MB first-use model download. The Python and Streamlit prototype remains local and is not part of the Cloudflare deployment. Its Chroma vectors use Chroma's explicit local default embedding function. The six 2026 editions have per-chunk PDF page metadata; the seven original editions retain their legacy chunks without pages.
 
-The Source library's page search is a separate lexical index with page links. It publishes term frequencies and page references, not extracted full text, and does not change analyst answers.
+The Source library and Report RAG share a lexical page index with publisher PDF links. Full extracted page text is accessible only to the Worker; its API returns bounded excerpts. Report RAG does not change observed-data findings.
 
 Reliability checks are described in [operations](docs/OPERATIONS.md): partial live findings label missing indicators; a scheduled Worker probe and external public monitor test representative series; weekly checks flag saved-value revisions and new official report links for review. The checks do not publish revised values or reports automatically.
 
@@ -49,6 +49,9 @@ flowchart LR
   W --> WB[World Bank Indicators API]
   W --> S[Versioned rounded demonstration]
   W --> R[Reviewed report passage index]
+  B -->|Page search| I[Lexical report index]
+  B -->|Optional synthesis| M[On-device model]
+  W --> E[Bounded PDF page excerpts]
   B -->|Displayed analysis object| P[Browser PDF renderer]
   L[Local-only Python prototype] --> C[(Local Chroma store)]
 ```
@@ -67,9 +70,9 @@ The hosted [report index](web/worker/reports.ts) has two short passages reviewed
 
 ## Privacy and limits
 
-The public app stores no prompts or PDFs. It has no client-side credentials, paid inference, public ingestion or file upload. React renders external text safely. API inputs are bounded. A small per-isolate request guard reduces rapid repeated calls; it is **not** a global rate limit. Configure an account-level Cloudflare rate limiting rule for `/api/*` before high-traffic promotion. Structured failure logs contain request ID, route, status and error type, not question text.
+The public app has no client-side credentials or public ingestion. Report questions go to the same-origin Worker for bounded excerpt selection; optional generation runs in the visitor's browser. No OpenAI or Workers AI model call is made. Model files download from Hugging Face only after the visitor requests generation. React renders external text safely. API inputs are bounded and a per-isolate request guard limits bursts. Structured failure logs contain request ID, route, status and error type, not question text.
 
-This release has five countries and three indicators. Its analyst report index is curated; the separate page search provides lexical navigation across the 13 PDFs. It does not support EU or euro-area aggregates, multi-country analyst questions, forecasts or live LLM synthesis. Annual series and report dates can lag economic events. The PDF uses standard Helvetica and ASCII-normalised text for portability.
+This release has five countries and three indicators. The observed-data analyst report index is curated; Report RAG provides lexical retrieval across the 13 PDFs with PDF page links. Retrieval can miss the best passage and the small optional model can make unsupported claims. It does not support EU or euro-area aggregates, multi-country observed-data analyst questions or forecasts. Annual series and report dates can lag economic events. The observed-data PDF uses standard Helvetica and ASCII-normalised text for portability.
 
 ## Evaluation
 
@@ -95,7 +98,7 @@ npm run deploy:production
 
 The scripts select the Cloudflare environment, build assets and Worker together, verify the intended Worker name, and deploy the generated configuration. The production configuration attaches only `econ.nickcloud.dev`; Cloudflare manages its DNS and certificate. This review deployed preview, then production after approval. Roll back the named Worker via its Cloudflare **Deployments** page or `npx wrangler rollback --name global-economic-intelligence` after selecting the previous version. See Cloudflare's [rollback instructions](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
 
-The app needs no paid model, D1, R2 or Vectorize, and renders PDFs in the browser to avoid Worker PDF CPU cost. Check [current Cloudflare pricing](https://developers.cloudflare.com/workers/platform/pricing/) before operating at scale. No paid service has been enabled.
+The app needs no paid model, D1, R2 or Vectorize, and renders briefing PDFs in the browser to avoid Worker PDF CPU cost. Normal Cloudflare hosting usage still follows the account plan; this release adds no paid inference service. See [current Cloudflare pricing](https://developers.cloudflare.com/workers/platform/pricing/) before operating at scale.
 
 ## Additional material
 

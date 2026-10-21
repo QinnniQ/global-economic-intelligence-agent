@@ -39,11 +39,13 @@ def build() -> bytes:
         report_number = len(reports)
         reports.append({key: report[key] for key in ("title", "publisher", "issue", "url", "sha256") } | {"id": report_id})
         for page_number, page in enumerate(reader.pages, start=1):
-            frequencies = Counter(terms(page.extract_text() or ""))
+            page_text = page.extract_text() or ""
+            frequencies = Counter(terms(page_text))
             if not frequencies:
                 continue
             page_id = len(pages)
-            pages.append([report_number, page_number, sum(frequencies.values())])
+            lead = re.sub(r"\s+", " ", page_text).strip()[:200]
+            pages.append([report_number, page_number, sum(frequencies.values()), lead])
             for term, frequency in frequencies.items():
                 postings[term].append([page_id, min(frequency, 255)])
     artifact = {"version": 1, "stopwords": sorted(STOPWORDS), "reports": reports, "pages": pages,

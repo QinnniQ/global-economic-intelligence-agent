@@ -2,7 +2,7 @@
 
 ## Public application
 
-The public application is one React/TypeScript single-page app (`web/src/main.tsx`) and one TypeScript Cloudflare Worker (`web/worker/index.ts`). Vite builds both; `web/wrangler.jsonc` names separate preview and production Workers. The browser calls relative `/api/*` routes on the same host. There is no public Python service, database, autonomous agent, vector store, or model call. This version is live on [econ.nickcloud.dev](https://econ.nickcloud.dev) and the [preview Worker](https://global-economic-intelligence-preview.nicholai-gay.workers.dev). A checkout's uncommitted changes are not live until deployed.
+The public application is one React/TypeScript single-page app (`web/src/main.tsx`) and one TypeScript Cloudflare Worker (`web/worker/index.ts`). Vite builds both; `web/wrangler.jsonc` names separate preview and production Workers. The browser calls relative `/api/*` routes on the same host. There is no public Python service, database, autonomous agent, vector store, or server-side model call. Optional report synthesis runs in a visitor's browser. This version is live on [econ.nickcloud.dev](https://econ.nickcloud.dev) and the [preview Worker](https://global-economic-intelligence-preview.nicholai-gay.workers.dev). A checkout's uncommitted changes are not live until deployed.
 
 ```mermaid
 flowchart LR
@@ -13,6 +13,9 @@ flowchart LR
   Worker -->|six-hour local edge cache| Cache[(Cloudflare Cache API)]
   Browser -->|page search| Lexical[Static PDF page term index]
   Lexical -->|page link| Publisher[Official publisher PDF]
+  Browser -->|selected pages| Worker
+  Worker -->|short excerpts| PageAssets[Hash-verified PDF page assets]
+  Browser -->|optional local synthesis| LocalModel[WebGPU model in browser]
   Browser -->|displayed Analysis object| PDF[Browser PDF renderer]
   Python[Local Python prototype] --> Chroma[(Local Chroma artifact)]
   Python -. separate experimental path .-> OpenAI[OpenAI service if configured]
@@ -24,7 +27,7 @@ In live mode, the visitor selects a country and indicator. React calls `GET /api
 
 For `POST /api/analysis`, the Worker resolves the selected country and supported topics, retrieves the necessary series independently, then `web/worker/analysis.ts` computes findings and percentage-point changes in deterministic code. If one series fails, successful series remain and the response names unavailable indicators. `web/worker/reports.ts` optionally attaches passages from a two-entry, manually reviewed index. The report text is contextual evidence and does not validate indicator values. The browser exports the **same displayed Analysis object** via `web/worker/pdf.ts`; export does not call the API again.
 
-Source library search is a browser-side lexical lookup against a generated static index of all verified PDF pages. The index contains term frequencies and page references. Results link to publisher PDFs. This path does not call Chroma or feed text into analyst answers.
+Source library search is a browser-side lexical lookup against a generated static index of all verified PDF pages. The index contains term frequencies, brief page leads and page references. Results link to publisher PDFs. Report RAG uses the same index to select candidate pages, then calls `/api/report-excerpts`. The Worker reads the hash-verified page assets through its private static-assets binding, returns short excerpts, and blocks direct page-asset downloads. An optional browser model can synthesize those excerpts. Neither path calls Chroma.
 
 ## Responsibilities and trust boundaries
 
@@ -36,7 +39,8 @@ Source library search is a browser-side lexical lookup against a generated stati
 | Report ingestion | Manual review of `data/reports_pdfs/ecb.pdf` and `oecd.pdf`; metadata checked into `web/worker/reports.ts` | No runtime ingestion |
 | Report retrieval | `web/worker/reports.ts` | In-bundle geography, topic and term filter; **not semantic/vector search** |
 | PDF page navigation | `web/src/reportSearch.ts`, `web/public/report-search-index.v1.json` | Static lexical index and external publisher links |
-| Model synthesis | Not configured in the public Worker | No public model or embedding calls |
+| Report page excerpts | `web/worker/reportExcerpts.ts`, `web/public/report-pages.v1` | Private static-assets binding; bounded text and publisher PDF page links |
+| Model synthesis | `web/src/localRag.ts` | Optional WebGPU model download to visitor's browser; no Worker model call |
 | Caching | `web/worker/index.ts` | Cloudflare Cache API; six-hour TTL, data-centre local and disposable |
 | Presentation and PDF | `web/src/main.tsx`, `web/worker/pdf.ts` | Browser only |
 
@@ -46,7 +50,7 @@ The response distinguishes **observation year**, optional **World Bank provider 
 
 `src/backend` is a separate FastAPI/Python prototype used locally with Streamlit, Chroma and OpenAI client code. It is not called by the public app. Its `rag_store.py` now explicitly uses Chroma's local `DefaultEmbeddingFunction` for ingestion and retrieval. The collection contains 9,317 vectors with 384 dimensions and cosine distance: 4,767 original chunks plus 4,550 from six 2026 official reports. The new chunks have source URL, publisher, issue, file hash and one-based PDF page metadata. The seven legacy editions have no per-chunk pages. All 13 PDFs are listed in the public Source library with publisher links and local SHA-256 fingerprints. Do not connect the local store to a public endpoint without access controls, retrieval and citation evaluation, and a plan for the legacy page metadata.
 
-The public app's configured model and embedding function are **none**. The local `.env` and `.env.example` set the Python prototype's `MODEL` to `gpt-4o-mini`; the local prototype reads `OPENAI_API_KEY` from environment configuration. No paid model request was made in this verification. The stored collection configuration identifies Chroma's default local ONNX MiniLM embedding function; `rag_store.py` selects it explicitly. No public ingestion or unrestricted inference endpoint exists.
+The public Worker's configured model and embedding function are **none**. The optional browser model is SmolLM2-135M-Instruct through Transformers.js; its retrieval context comes from lexical page search, not embeddings. The local `.env` and `.env.example` set the Python prototype's `MODEL` to `gpt-4o-mini`; the local prototype reads `OPENAI_API_KEY` from environment configuration. No paid model request was made in this verification. The stored collection configuration identifies Chroma's default local ONNX MiniLM embedding function; `rag_store.py` selects it explicitly. No public ingestion or unrestricted server-side inference endpoint exists.
 
 ## Operational scope
 
