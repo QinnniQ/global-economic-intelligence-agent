@@ -3,7 +3,7 @@ export type SearchIndex = {
   version: 1;
   stopwords: string[];
   reports: { id: string; title: string; publisher: string; issue: string; url: string; sha256: string }[];
-  pages: [reportIndex: number, pdfPage: number, length: number][];
+  pages: [reportIndex: number, pdfPage: number, length: number, lead?: string][];
   postings: Record<string, [pageIndex: number, frequency: number][]>;
 };
 
@@ -22,10 +22,11 @@ export async function loadReportIndex(fetcher: typeof fetch = fetch): Promise<Se
   return index;
 }
 
-export function searchReports(index: SearchIndex, query: string, limit = 8): ReportHit[] {
+export function searchReports(index: SearchIndex, query: string, limit = 8, preferCountrySections = false): ReportHit[] {
   const stopwords = new Set(index.stopwords);
   const normalized = query.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-  const queryTerms = [...new Set((normalized.match(/[a-z][a-z0-9]{1,23}/g) ?? []).filter(term => !stopwords.has(term)))].slice(0, 8);
+  const questionFillers = new Set(['about', 'does', 'latest', 'recent', 'say', 'said', 'tell', 'show', 'according', 'economic', 'economy']);
+  const queryTerms = [...new Set((normalized.match(/[a-z][a-z0-9]{1,23}/g) ?? []).filter(term => !stopwords.has(term) && (!preferCountrySections || !questionFillers.has(term))))].slice(0, 8);
   if (!queryTerms.length) return [];
   const total = index.pages.length;
   const averageLength = index.pages.reduce((sum, page) => sum + page[2], 0) / Math.max(total, 1);
@@ -45,21 +46,25 @@ export function searchReports(index: SearchIndex, query: string, limit = 8): Rep
       scores.set(pageId, current);
     }
   }
-  const ranked = [...scores.entries()].map(([pageId, match]) => {
-    const [reportIndex, page] = index.pages[pageId];
+  const explicitGeography = preferCountrySections ? queryTerms.find(term => ['netherlands', 'dutch', 'germany', 'german', 'france', 'french', 'britain', 'british'].includes(term)) : undefined;
+  const ranked = [...scores.entries()].filter(([, match]) => !explicitGeography || match.terms.includes(explicitGeography)).map(([pageId, match]) => {
+    const [reportIndex, page, , lead] = index.pages[pageId];
     const report = index.reports[reportIndex];
     const coverage = match.terms.length / queryTerms.length;
     const year = Number(report.issue.match(/20\d{2}/)?.[0] ?? 0);
     const metadataMatches = queryTerms.filter(term => reportTerms[reportIndex].has(term)).length;
-    const score = (match.score * (1 + coverage * 0.7) + metadataMatches * 2.5) * (year >= 2026 ? 1.05 : 1);
+    const leadMatch = explicitGeography && lead?.toLowerCase().includes(explicitGeography) ? 20 : 0;
+    const backMatterPenalty = /\b(contents|bibliography|references|statistical annex)\b/i.test(lead ?? '') ? 30 : 0;
+    const score = (preferCountrySections ? match.score * (0.2 + coverage * coverage * 2.8) + metadataMatches * 1.2 + leadMatch - backMatterPenalty : match.score * (1 + coverage * 0.7) + metadataMatches * 2.5) * (year >= 2026 ? 1.05 : 1);
     return { reportId: report.id, title: report.title, publisher: report.publisher, issue: report.issue,
-      page, url: `${report.url}#page=${page}`, matchedTerms: match.terms, score };
+      page, url: `${report.url}#page=${page}`, matchedTerms: match.terms, score, countrySection: leadMatch > 0 };
   }).sort((a, b) => b.score - a.score || a.reportId.localeCompare(b.reportId) || a.page - b.page);
+  const candidates = preferCountrySections && explicitGeography && ranked.some(hit => hit.countrySection) ? ranked.filter(hit => hit.countrySection) : ranked;
   const perReport = new Map<string, number>();
-  return ranked.filter(hit => {
+  return candidates.filter(hit => {
     const used = perReport.get(hit.reportId) ?? 0;
     if (used >= 2) return false;
     perReport.set(hit.reportId, used + 1);
     return true;
-  }).slice(0, limit);
+  }).slice(0, preferCountrySections && explicitGeography && candidates.some(hit => hit.countrySection) ? 1 : limit).map(({ countrySection: _countrySection, ...hit }) => hit);
 }

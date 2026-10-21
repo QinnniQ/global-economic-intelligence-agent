@@ -1,4 +1,10 @@
-# Verification record — 20 October 2026
+# Verification record — 21 October 2026
+
+## No-charge public report mode, 21 October 2026
+
+The public Report RAG path searches a lexical page index over 13 hash-verified local PDFs and returns bounded excerpts with publisher PDF page links. `scripts/build_report_pages.py` checks each SHA-256 and page count before producing page assets. The Worker has no OpenAI key, OpenAI vector store, Workers AI binding or paid model route. Optional generation is a browser-only WebGPU path that starts after a visitor chooses a roughly 117 MB model download; a build alone does not verify its runtime output.
+
+An initial preview returned 503 from `/api/report-excerpts` because the static asset binding was missing. Adding `assets.binding:"ASSETS"` fixed it. An initial browser question ranked incidental country mentions too highly; country-section ranking then surfaced the European Commission Spring 2026 forecast. The final preview version `eef7dc79-d53b-4c0f-896d-390933cc1fe9` and production version `2fc2711b-20fc-4a95-b98a-cd304c29ae35` returned one focused excerpt from its Netherlands section, linked to PDF page 138. Production `/api/health` reported `modelGenerationEnabled:false`; `/api/catalog` reported `onDeviceRagAvailable:true`; `/api/rag` and direct `/report-pages.v1/*` access returned 404. A production browser journey showed the same passage and publisher link. The web suite passed **27 tests**, both generated PDF artifacts were verified against the 13 source files, and `npm audit --omit=dev` found zero production vulnerabilities. No model file was downloaded and no model call was made during this verification. See [the public report mode](PUBLIC_RAG.md) for the cost boundary and limits.
 
 ## Reliability and report page search, 20 October 2026
 
@@ -43,7 +49,7 @@ Before the new deployment, the production **Live data** toggle for Netherlands s
 
 1. Investigate the live World Bank failure from the Worker side; capture request ID and status without logging user questions. Test an official API response from an unrestricted environment.
 2. Preview health, saved analyst, saved Netherlands/Germany/France comparison, live overview/table, live analyst and PDF download were checked. At a 390×844 mobile viewport, the comparison controls and saved analyst/evidence layout were inspected and the saved question was run. Production health, saved analyst, live overview, live analyst and **live briefing PDF download** were then checked after deployment. This was a visual smoke check, not a comprehensive accessibility audit.
-3. The two-passage corpus has limited recall. The original Python/Chroma corpus has since been verified against Chroma's default embedding function (details below), but public vector RAG and model synthesis remain unavailable.
+3. The observed-data path's two-passage corpus has limited recall. Public Report RAG uses a separate lexical page index and optional on-device synthesis; its retrieval quality and generated-answer faithfulness are not measured.
 4. The Worker has only a per-isolate request guard; it is not a global rate limit. The browser bundle is relatively large.
 
 Rollback, if a later deployment is made: select the previous Worker version in Cloudflare **Deployments**, or use `npx wrangler rollback --name global-economic-intelligence` for production after confirming the target version. [Cloudflare rollback guide](https://developers.cloudflare.com/workers/versions-and-deployments/rollbacks/).
